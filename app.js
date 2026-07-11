@@ -176,15 +176,16 @@
    * @param {string}   pattern - pattern type from PATTERNS
    * @returns {string[]} transformed note sequence
    */
-  function applyPattern(notes, pattern) {
+  function applyPattern(notes, pattern, octaves) {
     if (!notes || notes.length === 0) return notes;
+    var numOctaves = octaves || 1;
 
     if (pattern === "scale") return notes;
 
     if (INTERVAL_OFFSETS[pattern] !== undefined) {
       var offset = INTERVAL_OFFSETS[pattern];
       var result = [];
-      for (var i = 0; i < 8 && i + offset < notes.length; i++) {
+      for (var i = 0; i < 8 * numOctaves && i + offset < notes.length; i++) {
         result.push(notes[i]);
         result.push(notes[i + offset]);
       }
@@ -194,7 +195,7 @@
     if (CHORD_STEPS[pattern] !== undefined) {
       var steps = CHORD_STEPS[pattern];
       var result = [];
-      for (var i = 0; i < 8; i++) {
+      for (var i = 0; i < 8 * numOctaves; i++) {
         var maxIdx = i + steps[steps.length - 1];
         if (maxIdx >= notes.length) break;
         for (var s = 0; s < steps.length; s++) {
@@ -206,13 +207,14 @@
 
     if (pattern === "clarke") {
       var result = [];
-      for (var i = 0; i < 7 && i + 2 < notes.length; i++) {
+      for (var i = 0; i < 7 * numOctaves && i + 2 < notes.length; i++) {
         result.push(notes[i]);
         result.push(notes[i + 1]);
         result.push(notes[i + 2]);
         result.push(notes[i]);
       }
-      result.push(notes.length > 7 ? notes[7] : notes[0]);
+      var targetIdx = 7 * numOctaves;
+      result.push(notes.length > targetIdx ? notes[targetIdx] : notes[0]);
       return result;
     }
 
@@ -340,9 +342,11 @@
     var notes       = getScaleNotes(tonic, modeType, startOctave, endOctave);
     var patternType = patternSelect.value;
 
+    var octaves = Math.max(1, endOctave - startOctave);
+
     // For interval and chord patterns, extend range by one octave so
     // the upper notes of each dyad / chord can exceed endOctave while
-    // roots stay within one octave (8 roots).
+    // roots stay within the selected octaves.
     var needsExtraOctave = INTERVAL_OFFSETS[patternType] !== undefined
       || CHORD_STEPS[patternType] !== undefined
       || patternType === "clarke";
@@ -351,7 +355,7 @@
       notes = notes.concat(extra.slice(1));
     }
 
-    notes = applyPattern(notes, patternType);
+    notes = applyPattern(notes, patternType, octaves);
 
     // Apply direction (ascending, descending, or up+down)
     var direction = directionSelect.value;
