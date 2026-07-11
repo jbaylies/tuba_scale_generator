@@ -771,7 +771,11 @@
 
       gain.gain.setValueAtTime(0, t);
       gain.gain.linearRampToValueAtTime(0.22, t + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      // Use setTargetAtTime for a smooth, natural decay that is
+      // consistent across browsers.  Firefox on Android handles
+      // exponentialRampToValueAtTime to tiny values aggressively,
+      // cutting the note body short and producing a thin sound.
+      gain.gain.setTargetAtTime(0.001, t + 0.03, dur / 2);
 
       osc.connect(filter);
       filter.connect(gain);
@@ -881,5 +885,19 @@
   notationHintEl.appendChild(noteToggle);
 
   loadPreferences();
-  render();
+
+  // Wait for music fonts to load before initial render.
+  // VexFlow 5 loads Bravura asynchronously via @font-face.
+  // Chromium browsers may paint before font metrics are calculated,
+  // causing incorrect note heads and stems on first load.
+  // Firefox blocks rendering until fonts are ready, masking the issue there.
+  if (document.fonts && document.fonts.ready) {
+    output.innerHTML = '<p class="notation-hint">Loading notation\u2026</p>';
+    document.fonts.ready.then(function () {
+      render();
+    });
+  } else {
+    // Fallback for environments without the Font Loading API
+    render();
+  }
 })();
