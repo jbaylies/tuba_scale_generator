@@ -9,7 +9,7 @@
   }
 
   const VF = VexFlow;
-  const { Renderer, Stave, StaveNote, Accidental, Voice, Formatter } = VF;
+  const { Renderer, Stave, StaveNote, Accidental, Annotation, Voice, Formatter } = VF;
 
   /* ---------- Configuration ---------- */
   // All 12 pitch classes with both sharp and flat spellings (circle of fifths order)
@@ -23,6 +23,84 @@
     "F": "F", "Bb": "B\u266D", "Eb": "E\u266D",
     "Ab": "A\u266D", "Db": "D\u266D", "Gb": "G\u266D",
   };
+
+  /* ---------- Tuba Fingerings ----------
+   *  BBb tuba fingerings keyed by note name with octave (e.g. "Bb2").
+   *  Valve numbers: 0 = open, 1 = 1st, 2 = 2nd, 3 = 3rd, 4 = 4th.
+   *  Combinations: "12" = 1+2, "23" = 2+3, "234" = 2+3+4, etc.
+   *  Only one spelling per MIDI needed — enharmonic lookup handles the rest.
+   */
+  var FINGERINGS = {
+     // Octave 0
+     "C0": "1234",  "Db0": "234",  "D0": "34",  "Eb0": "14",  "E0": "24",  "F0": "4",
+     "Gb0": "23",  "G0": "12",  "Ab0": "1",  "A0": "2",  "Bb0": "0",  "B0": "51234",
+     // Octave 1
+     "C1": "1234",  "Db1": "234",  "D1": "34",  "Eb1": "14",  "E1": "123",  "F1": "13",
+     "Gb1": "23",  "G1": "12",  "Ab1": "1",  "A1": "2",  "Bb1": "0",  "B1": "123",
+     // Octave 2 (pedal / low range)
+     "C2": "13",  "Db2": "23",  "D2": "12",  "Eb2": "1",  "E2": "2",  "F2": "0",
+     "Gb2": "23",  "G2": "12",  "Ab2": "1",  "A2": "2",  "Bb2": "0",  "B2": "12",
+     // Octave 3 (middle range)
+     "C3": "1",  "Db3": "2",  "D3": "0",  "Eb3": "1",  "E3": "2",  "F3": "0",
+     "Gb3": "23",  "G3": "12",  "Ab3": "1",  "A3": "2",  "Bb3": "0",  "B3": "12",
+     // Octave 4 (upper range)
+     "C4": "1",  "Db4": "2",  "D4": "0",  "Eb4": "1",  "E4": "2",  "F4": "0",
+     "Gb4": "23",  "G4": "12",  "Ab4": "1",  "A4": "2",  "Bb4": "0",  "B4": "12",
+     // Octave 5
+     "C5": "1",  "Db5": "2",  "D5": "0",  "Eb5": "1",  "E5": "2",  "F5": "0",
+     "Gb5": "23",  "G5": "12",  "Ab5": "1",  "A5": "2",  "Bb5": "0",  "B5": "12",
+  };
+
+  /* ---------- Tuba key transposition ----------
+   *  Fingerings are stored for BBb tuba. For other tuba keys the same
+   *  fingering pattern is shifted by the listed number of semitones.
+   *  e.g. a CC tuba playing C2 uses the BBb fingering for Bb2 (−2 st).
+   */
+  var TUBA_KEYS = [
+    { value: "0",  label: "BB\u266D", shift: 0 },
+    { value: "2",  label: "CC",       shift: 2 },
+    { value: "5",  label: "E\u266D",  shift: 5 },
+    { value: "7",  label: "F",        shift: 7 },
+  ];
+
+  var PATTERNS = [
+    { value: "ascending",              label: "Ascending" },
+    { value: "descending",             label: "Descending" },
+    { value: "ascendingDescending",    label: "Ascending + Descending" },
+    { value: "arpeggio",               label: "Arpeggio (1\u20133\u20135\u20138)" },
+    { value: "arpeggioUpDown",         label: "Arpeggio (1\u20133\u20135\u20138\u20135\u20133\u20131)" },
+    { value: "diatonicTriads",         label: "Diatonic Triads (1-3-5, 2-4-6, …)" },
+    { value: "diatonicTriadsUpDown",   label: "Diatonic Triads Up + Down" },
+    { value: "diatonicSevenths",       label: "Diatonic 7ths (1-3-5-7, 2-4-6-1, …)" },
+    { value: "diatonicSeventhsUpDown", label: "Diatonic 7ths Up + Down" },
+  ];
+
+  /**
+   * Return the fingering for any enharmonic spelling of a note.
+   * Builds a MIDI-number index on first call so "Cb3" matches "B2",
+   * "F#2" matches "Gb2", etc. Only one spelling per MIDI needs an entry.
+   * @param {string} tonalNote - Tonal note name e.g. "C3"
+   * @param {number} shift     - semitones to transpose down for tuba key (0 for BBb)
+   */
+  var _fingeringByMidi = null;
+  function getFingering(tonalNote, shift) {
+    if (_fingeringByMidi === null) {
+      _fingeringByMidi = {};
+      for (var key in FINGERINGS) {
+        if (!FINGERINGS[key]) continue;
+        var midi = Tonal.Note.midi(key);
+        if (midi !== null && midi !== undefined) {
+          _fingeringByMidi[midi] = FINGERINGS[key];
+        }
+      }
+    }
+    var midi = Tonal.Note.midi(tonalNote);
+    if (midi === null || midi === undefined) return "";
+    // Shift the MIDI number down by the tuba-key offset to find the
+    // equivalent BBb note (e.g. CC tuba C2 → BBb Bb2).
+    var lookupMidi = midi - shift;
+    return _fingeringByMidi[lookupMidi] || "";
+  }
 
   const MODES = [
     { value: "ionian",     label: "Major (Ionian)" },
@@ -40,6 +118,10 @@
   const startOctaveSelect  = document.getElementById("startOctaveSelect");
   const endOctaveSelect    = document.getElementById("endOctaveSelect");
   const keySigToggle       = document.getElementById("keySigToggle");
+  const fingeringToggle    = document.getElementById("fingeringToggle");
+  const noteNameToggle     = document.getElementById("noteNameToggle");
+  const tubaSelect         = document.getElementById("tubaSelect");
+  const patternSelect      = document.getElementById("patternSelect");
   const playBtn         = document.getElementById("playBtn");
   const scaleNameEl     = document.getElementById("scaleName");
   const noteCountEl     = document.getElementById("noteCount");
@@ -50,36 +132,99 @@
   KEYS.forEach(function (k) {
     keySelect.add(new Option(KEY_LABELS[k] || k, k));
   });
-  keySelect.value = "Bb"; // Most common key for tuba
+  keySelect.value = "Bb";
 
   MODES.forEach(function (m) {
     modeSelect.add(new Option(m.label, m.value));
   });
   modeSelect.value = "ionian";
 
+  TUBA_KEYS.forEach(function (t) {
+    tubaSelect.add(new Option(t.label, t.value));
+  });
+  tubaSelect.value = "0";
+
+  PATTERNS.forEach(function (p) {
+    patternSelect.add(new Option(p.label, p.value));
+  });
+  patternSelect.value = "ascending";
+
   [0, 1, 2, 3, 4, 5].forEach(function (o) {
     startOctaveSelect.add(new Option("Octave " + o, String(o)));
     endOctaveSelect.add(new Option("Octave " + o, String(o)));
   });
-  startOctaveSelect.value = "2";
+  startOctaveSelect.value = "1";
   endOctaveSelect.value   = "3";
+
+  /**
+   * Transform an ascending scale note list into the requested pattern.
+   * @param {string[]} notes   - ascending scale notes (tonic … top tonic)
+   * @param {string}   pattern - pattern type from PATTERNS
+   * @returns {string[]} transformed note sequence
+   */
+  function applyPattern(notes, pattern) {
+    if (!notes || notes.length === 0) return notes;
+
+    if (pattern === "ascending") return notes;
+
+    if (pattern === "descending") return notes.slice().reverse();
+
+    if (pattern === "ascendingDescending") {
+      var down = notes.slice(0, -1).reverse();
+      return notes.concat(down);
+    }
+
+    if (pattern === "arpeggio" || pattern === "arpeggioUpDown") {
+      var arp = [];
+      var totalOctaves = Math.floor((notes.length - 1) / 7);
+      for (var o = 0; o < totalOctaves; o++) {
+        var base = o * 7;
+        arp.push(notes[base]);
+        arp.push(notes[base + 2]);
+        arp.push(notes[base + 4]);
+      }
+      arp.push(notes[notes.length - 1]);
+      if (pattern === "arpeggio") return arp;
+      var arpDown = arp.slice(0, -1).reverse();
+      return arp.concat(arpDown);
+    }
+
+    if (pattern === "diatonicTriads" || pattern === "diatonicTriadsUpDown") {
+      var result = [];
+      for (var i = 0; i + 4 < notes.length; i++) {
+        result.push(notes[i]);
+        result.push(notes[i + 2]);
+        result.push(notes[i + 4]);
+      }
+      if (pattern === "diatonicTriads") return result;
+      return result.concat(result.slice(0, -3).reverse());
+    }
+
+    if (pattern === "diatonicSevenths" || pattern === "diatonicSeventhsUpDown") {
+      var result7 = [];
+      for (var j = 0; j + 6 < notes.length; j++) {
+        result7.push(notes[j]);
+        result7.push(notes[j + 2]);
+        result7.push(notes[j + 4]);
+        result7.push(notes[j + 6]);
+      }
+      if (pattern === "diatonicSevenths") return result7;
+      return result7.concat(result7.slice(0, -4).reverse());
+    }
+
+    return notes;
+  }
 
   /* ---------- Music theory via Tonal.js ---------- */
 
-  /**
-   * Build an ascending scale spanning from the tonic at startOctave up to and
-   * including the tonic at endOctave. Uses Tonal.Scale.get for the first octave
-   * (handles within-octave crossings and correct spelling) then transposes by
-   * 8P for subsequent octaves, preserving enharmonic spelling throughout.
-   */
   function getScaleNotes(tonic, modeType, startOctave, endOctave) {
     if (startOctave > endOctave) return [];
     var tonicWithOct = tonic + startOctave;
     var scale = Tonal.Scale.get(tonicWithOct + " " + modeType);
     if (!scale || scale.empty || !scale.notes || scale.notes.length === 0) return [];
-    var base = scale.notes; // 7 notes, e.g. ["C2","D2",...,"B2"]
+    var base = scale.notes;
 
-    var octaves = endOctave - startOctave; // number of 8P leaps to cover
+    var octaves = endOctave - startOctave;
     var out = [];
     for (var o = 0; o < octaves; o++) {
       for (var i = 0; i < base.length; i++) {
@@ -88,21 +233,18 @@
         out.push(m);
       }
     }
-    // Final tonic at the top (the endOctave tonic)
     var top = base[0];
     for (var k2 = 0; k2 < octaves; k2++) top = Tonal.Note.transpose(top, "8P");
     out.push(top);
     return out;
   }
 
-  /** Convert a Tonal note name (e.g. "Eb3") to a VexFlow key string (e.g. "eb/3"). */
   function toVexKey(tonalNote) {
     var pc = Tonal.Note.pitchClass(tonalNote).toLowerCase();
     var oct = Tonal.Note.octave(tonalNote);
     return pc + "/" + oct;
   }
 
-  /** Extract the VexFlow accidental type from a pitch-class string. */
   function accidentalType(pitchClass) {
     if (pitchClass.indexOf("##") !== -1) return "##";
     if (pitchClass.indexOf("bb") !== -1) return "bb";
@@ -111,20 +253,11 @@
     return null;
   }
 
-  /**
-   * The 15 standard major-key signatures VexFlow can render on a stave.
-   * (Circle of fifths: C → 7 sharps / C → 7 flats.) Any parent key outside
-   * this set (e.g. G#, Fb, Bbb) is non-standard and falls back to no key sig.
-   */
   var STANDARD_KEY_SIGS = new Set([
     "C", "G", "D", "A", "E", "B", "F#", "C#",
     "F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb",
   ]);
 
-  // Each mode is a rotation of the major scale; this maps each mode to the
-  // interval from the mode's tonic UP to the parent major (Ionian) tonic.
-  // e.g. Dorian's tonic is the 2nd degree of its parent major, so the parent
-  // tonic is a 2M below the dorian tonic. We store the descent interval.
   var MODE_DEGREE_DOWN = {
     ionian:     "1P",
     dorian:     "2M",
@@ -135,11 +268,6 @@
     locrian:    "7M",
   };
 
-  /**
-   * Compute the key-signature spec for VexFlow's addKeySignature() given a
-   * scale tonic and mode. Returns the parent major key name (e.g. "Bb") when
-   * it is a standard, renderable key signature, or null otherwise.
-   */
   function getKeySignature(tonic, modeType) {
     var descend = MODE_DEGREE_DOWN[modeType];
     if (!descend) return null;
@@ -148,16 +276,10 @@
     return null;
   }
 
-  /**
-   * Set of pitch classes that are altered in a given major key signature.
-   * Used to suppress redundant per-note accidentals when a key sig is shown.
-   */
   function alteredPitchClasses(keySigName) {
     if (!keySigName || keySigName === "C") return new Set();
     var scale = Tonal.Key.majorKey(keySigName);
     if (!scale || !scale.scale) return new Set();
-    // A pitch class is altered if it differs from the natural (C-major) letter.
-    // The major key's notes contain the altered letters; compare against naturals.
     var altered = new Set();
     var naturalSet = new Set(["C", "D", "E", "F", "G", "A", "B"]);
     scale.scale.forEach(function (n) {
@@ -176,11 +298,14 @@
     var startOctave = parseInt(startOctaveSelect.value, 10);
     var endOctave   = parseInt(endOctaveSelect.value, 10);
     var useKeySig   = keySigToggle.checked;
+    var showFingerings = fingeringToggle.checked;
+    var showNoteNames  = noteNameToggle.checked;
+    var tubaShift   = parseInt(tubaSelect.value, 10);
     var notes       = getScaleNotes(tonic, modeType, startOctave, endOctave);
+    var patternType = patternSelect.value;
+    notes           = applyPattern(notes, patternType);
     currentNotes    = notes;
 
-    // Key-signature spec + the set of altered pitch classes (for suppressing
-    // redundant per-note accidentals when the key sig is displayed).
     var keySigName    = useKeySig ? getKeySignature(tonic, modeType) : null;
     var alteredPcs    = keySigName ? alteredPitchClasses(keySigName) : new Set();
     var haveKeySig    = !!keySigName;
@@ -220,28 +345,22 @@
       return;
     }
 
-    /* ---- Multi-system layout ----
-     * Split the notes into wrapped "systems" (staff lines) so long scales
-     * stack vertically instead of producing one very wide, scroll-only line.
-     * Each system gets its own clef + key signature, just like printed music.
-     */
     var n = notes.length;
 
     // Layout constants (in SVG pixels)
-    var SYSTEM_WIDTH  = 880;  // width of each staff line
-    var SYSTEM_HEIGHT = 190;  // vertical space per system (room for octave-0 ledger lines)
-    var STAVE_TOP     = 40;   // y-offset of the first stave
-    var NOTE_PX       = 45;   // approx pixels per quarter note
-    var CLEF_PX       = 60;   // clef width
-    var PAD_PX        = 30;   // right-side padding
-    var MAX_PER_LINE  = 10;   // visual cap so lines stay readable
+    var SYSTEM_WIDTH  = 880;
+    var SYSTEM_HEIGHT = 190;
+    var STAVE_TOP     = 40;
+    var NOTE_PX       = 45;
+    var CLEF_PX       = 60;
+    var PAD_PX        = 30;
+    var MAX_PER_LINE  = 10;
 
     var keySigPad   = haveKeySig ? 70 : 0;
     var availWidth  = SYSTEM_WIDTH - CLEF_PX - keySigPad - PAD_PX;
     var perSystem   = Math.min(MAX_PER_LINE, n, Math.floor(availWidth / NOTE_PX));
     if (perSystem < 1) perSystem = 1;
 
-    // Distribute notes as evenly as possible across systems.
     var numSystems = Math.ceil(n / perSystem);
     var systems = [];
     var idx = 0;
@@ -253,16 +372,17 @@
       idx += count;
     }
 
-    // Total canvas height: top margin + systems + bottom margin.
-    var totalHeight = STAVE_TOP + numSystems * SYSTEM_HEIGHT + 20;
+    var fingeringPad  = showFingerings ? 24 : 0;
+    var noteNamePad    = showNoteNames ? 20 : 0;
+    var extraPadPerSys = fingeringPad + noteNamePad;
+    var totalHeight = STAVE_TOP + noteNamePad + numSystems * (SYSTEM_HEIGHT + extraPadPerSys) + 20;
 
     var renderer = new Renderer(output, Renderer.Backends.SVG);
     renderer.resize(SYSTEM_WIDTH, totalHeight);
     var ctx = renderer.getContext();
 
-    // Render each system: stave (with clef + key sig) → voice → format → draw.
     systems.forEach(function (systemNotes, si) {
-      var y = STAVE_TOP + si * SYSTEM_HEIGHT;
+      var y = STAVE_TOP + noteNamePad + si * (SYSTEM_HEIGHT + extraPadPerSys);
       var stave = new Stave(10, y, SYSTEM_WIDTH - 20);
       stave.addClef("bass");
       if (haveKeySig) stave.addKeySignature(keySigName);
@@ -273,12 +393,23 @@
         var sn  = new StaveNote({ keys: [key], duration: "q", clef: "bass", autoStem: true });
         var pc  = Tonal.Note.pitchClass(tonalNote);
         var acc = accidentalType(pc);
-        // When a key signature is shown, only draw an accidental on a note whose
-        // pitch class is NOT already altered by the key signature — i.e. notes
-        // that need a natural or a different accidental than the key sig implies.
-        // (Notes already covered by the key sig are left unmarked, as is standard.)
         if (acc && (!haveKeySig || !alteredPcs.has(pc))) {
           sn.addModifier(new Accidental(acc), 0);
+        }
+        if (showNoteNames) {
+          var nameAnnotation = new Annotation(tonalNote);
+          nameAnnotation.setVerticalJustification(Annotation.VerticalJustify.TOP);
+          nameAnnotation.setFont({ family: "Inter, system-ui, sans-serif", size: 9, weight: "400" });
+          sn.addModifier(nameAnnotation, 0);
+        }
+        if (showFingerings) {
+          var fingering = getFingering(tonalNote, tubaShift);
+          if (fingering) {
+            var annotation = new Annotation(fingering);
+            annotation.setVerticalJustification(Annotation.VerticalJustify.BOTTOM);
+            annotation.setFont({ family: "Inter, system-ui, sans-serif", size: 11, weight: "600" });
+            sn.addModifier(annotation, 0);
+          }
         }
         return sn;
       });
@@ -306,7 +437,7 @@
     if (audioCtx.state === "suspended") audioCtx.resume();
 
     var now       = audioCtx.currentTime;
-    var rate      = 0.42; // seconds per note
+    var rate      = 0.42;
     var noteSpans = notationHintEl.querySelectorAll(".note-name");
 
     currentNotes.forEach(function (note, i) {
@@ -338,7 +469,6 @@
       osc.start(t);
       osc.stop(t + dur + 0.05);
 
-      /* Highlight the current note name */
       setTimeout(function () {
         noteSpans.forEach(function (s, idx) {
           s.classList.toggle("active", idx === i);
@@ -361,6 +491,10 @@
   startOctaveSelect.addEventListener("change", render);
   endOctaveSelect.addEventListener("change", render);
   keySigToggle.addEventListener("change", render);
+  fingeringToggle.addEventListener("change", render);
+  noteNameToggle.addEventListener("change", render);
+  tubaSelect.addEventListener("change", render);
+  patternSelect.addEventListener("change", render);
   playBtn.addEventListener("click", play);
 
   render();
