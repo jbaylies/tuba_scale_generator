@@ -798,7 +798,6 @@
     labels.forEach(function (el) { if (el) el.textContent = "Stop"; });
 
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume();
 
     var noteSpans = notationHintEl.querySelectorAll(".note-name");
     var currentIdx = 0;
@@ -862,7 +861,15 @@
       playbackTimeouts.push(timeoutId);
     }
 
-    scheduleNext();
+    // Ensure the audio context is fully resumed before scheduling.
+    // A newly-created AudioContext starts suspended and resume() is async;
+    // if we schedule before resume completes, currentTime is frozen and
+    // the first two notes end up nearly simultaneous.
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().then(scheduleNext);
+    } else {
+      scheduleNext();
+    }
   }
 
   /* ---------- Wire up & initial render ---------- */
