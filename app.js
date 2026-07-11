@@ -71,8 +71,11 @@
     { value: "diatonicSixths",         label: "Intervals: 6ths (1-6, 2-7, 3-1, …)" },
     { value: "diatonicSeventhsIntervals", label: "Intervals: 7ths (1-7, 2-1, 3-2, …)" },
     { value: "diatonicTriads",         label: "Diatonic Triads (1-3-5, 2-4-6, …)" },
+    { value: "diatonicTriadsDesc",     label: "Diatonic Triads desc (5-3-1, 6-4-2, …)" },
     { value: "diatonicSevenths",       label: "Diatonic 7ths (1-3-5-7, 2-4-6-1, …)" },
+    { value: "diatonicSeventhsDesc",   label: "Diatonic 7ths desc (7-5-3-1, 1-6-4-2, …)" },
     { value: "diatonicNinths",         label: "Diatonic 9ths (1-3-5-7-9, 2-4-6-1-3, …)" },
+    { value: "diatonicNinthsDesc",     label: "Diatonic 9ths desc (9-7-5-3-1, …)" },
     { value: "clarke",                 label: "Clarke (1-2-3-1, 2-3-4-2, …)" },
   ];
 
@@ -171,54 +174,124 @@
   endOctaveSelect.value   = "2";
 
   /**
-   * Transform an ascending scale note list into the requested pattern.
-   * @param {string[]} notes   - ascending scale notes (tonic … top tonic)
-   * @param {string}   pattern - pattern type from PATTERNS
+   * Return the notes for a chord rooted at index i.
+   * Both ascending and descending chord patterns build *above* the root.
+   */
+  function getChordNotes(allNotes, i, steps, desc) {
+    var res = [];
+    if (desc) {
+      for (var s = steps.length - 1; s >= 0; s--) res.push(allNotes[i + steps[s]]);
+    } else {
+      for (var s = 0; s < steps.length; s++) res.push(allNotes[i + steps[s]]);
+    }
+    return res;
+  }
+
+  /**
+   * Generate ascending pattern from scale notes between startIdx and endIdx.
+   * @param {string[]} allNotes - full scale notes array (includes lower octave prepend)
+   * @param {string}   pattern  - pattern type
+   * @param {number}   startIdx - index of tonic at startOctave
+   * @param {number}   endIdx   - index of last root (may extend past tonic at endOctave)
    * @returns {string[]} transformed note sequence
    */
-  function applyPattern(notes, pattern, octaves) {
-    if (!notes || notes.length === 0) return notes;
-    var numOctaves = octaves || 1;
+  function generateAscendingPattern(allNotes, pattern, startIdx, endIdx) {
+    if (!allNotes || allNotes.length === 0 || startIdx > endIdx) return [];
 
-    if (pattern === "scale") return notes;
+    if (pattern === "scale") {
+      return allNotes.slice(startIdx, endIdx + 1);
+    }
 
     if (INTERVAL_OFFSETS[pattern] !== undefined) {
       var offset = INTERVAL_OFFSETS[pattern];
       var result = [];
-      for (var i = 0; i < 8 * numOctaves && i + offset < notes.length; i++) {
-        result.push(notes[i]);
-        result.push(notes[i + offset]);
+      for (var i = startIdx; i <= endIdx && i + offset < allNotes.length; i++) {
+        result.push(allNotes[i]);
+        result.push(allNotes[i + offset]);
       }
       return result;
     }
 
-    if (CHORD_STEPS[pattern] !== undefined) {
-      var steps = CHORD_STEPS[pattern];
+    var isDescChord = CHORD_DESC_OF[pattern] !== undefined;
+    var chordPattern = isDescChord ? CHORD_DESC_OF[pattern] : pattern;
+
+    if (CHORD_STEPS[chordPattern] !== undefined) {
+      var steps = CHORD_STEPS[chordPattern];
       var result = [];
-      for (var i = 0; i < 8 * numOctaves; i++) {
+      for (var i = startIdx; i <= endIdx; i++) {
         var maxIdx = i + steps[steps.length - 1];
-        if (maxIdx >= notes.length) break;
-        for (var s = 0; s < steps.length; s++) {
-          result.push(notes[i + steps[s]]);
-        }
+        if (maxIdx >= allNotes.length) break;
+        result = result.concat(getChordNotes(allNotes, i, steps, isDescChord));
       }
       return result;
     }
 
     if (pattern === "clarke") {
       var result = [];
-      for (var i = 0; i < 7 * numOctaves && i + 2 < notes.length; i++) {
-        result.push(notes[i]);
-        result.push(notes[i + 1]);
-        result.push(notes[i + 2]);
-        result.push(notes[i]);
+      for (var i = startIdx; i < endIdx && i + 2 < allNotes.length; i++) {
+        result.push(allNotes[i]);
+        result.push(allNotes[i + 1]);
+        result.push(allNotes[i + 2]);
+        result.push(allNotes[i]);
       }
-      var targetIdx = 7 * numOctaves;
-      result.push(notes.length > targetIdx ? notes[targetIdx] : notes[0]);
+      result.push(allNotes.length > endIdx ? allNotes[endIdx] : allNotes[0]);
       return result;
     }
 
-    return notes;
+    return allNotes.slice(startIdx, endIdx + 1);
+  }
+
+  /**
+   * Generate descending pattern from scale notes, iterating downward.
+   * First note of each pair/chord is the higher note (within range),
+   * second note goes below (may dip below startOctave).
+   */
+  function generateDescendingPattern(allNotes, pattern, startIdx, endIdx) {
+    if (!allNotes || allNotes.length === 0 || startIdx > endIdx) return [];
+
+    if (pattern === "scale") {
+      var res = [];
+      for (var i = endIdx; i >= startIdx; i--) res.push(allNotes[i]);
+      return res;
+    }
+
+    if (INTERVAL_OFFSETS[pattern] !== undefined) {
+      var offset = INTERVAL_OFFSETS[pattern];
+      var result = [];
+      for (var i = endIdx; i >= startIdx; i--) {
+        if (i - offset < 0) break;
+        result.push(allNotes[i]);
+        result.push(allNotes[i - offset]);
+      }
+      return result;
+    }
+
+    var isDescChord = CHORD_DESC_OF[pattern] !== undefined;
+    var chordPattern = isDescChord ? CHORD_DESC_OF[pattern] : pattern;
+
+    if (CHORD_STEPS[chordPattern] !== undefined) {
+      var steps = CHORD_STEPS[chordPattern];
+      var result = [];
+      for (var i = endIdx; i >= startIdx; i--) {
+        if (i + steps[steps.length - 1] >= allNotes.length) continue;
+        result = result.concat(getChordNotes(allNotes, i, steps, isDescChord));
+      }
+      return result;
+    }
+
+    if (pattern === "clarke") {
+      var result = [];
+      for (var i = endIdx; i > startIdx && i - 2 >= 0; i--) {
+        result.push(allNotes[i]);
+        result.push(allNotes[i - 1]);
+        result.push(allNotes[i - 2]);
+        result.push(allNotes[i]);
+      }
+      result.push(allNotes[startIdx]);
+      return result;
+    }
+
+    return [];
   }
 
   /* ---------- Music theory via Tonal.js ---------- */
@@ -295,6 +368,12 @@
     diatonicNinths:   [0, 2, 4, 6, 8]
   };
 
+  var CHORD_DESC_OF = {
+    diatonicTriadsDesc: "diatonicTriads",
+    diatonicSeventhsDesc: "diatonicSevenths",
+    diatonicNinthsDesc: "diatonicNinths"
+  };
+
   var MODE_DEGREE_DOWN = {
     ionian:          "1P",
     dorian:          "2M",
@@ -329,6 +408,7 @@
 
   /* ---------- VexFlow rendering ---------- */
   var currentNotes = [];
+  var currentDurations = [];
 
   function render() {
     var tonic       = keySelect.value;
@@ -339,34 +419,74 @@
     var showFingerings = fingeringToggle.checked;
     var showNoteNames  = noteNameToggle.checked;
     var tubaShift   = parseInt(tubaSelect.value, 10);
-    var notes       = getScaleNotes(tonic, modeType, startOctave, endOctave);
     var patternType = patternSelect.value;
+    var direction   = directionSelect.value;
 
     var octaves = Math.max(1, endOctave - startOctave);
 
-    // For interval and chord patterns, extend range by one octave so
-    // the upper notes of each dyad / chord can exceed endOctave while
-    // roots stay within the selected octaves.
-    var needsExtraOctave = INTERVAL_OFFSETS[patternType] !== undefined
-      || CHORD_STEPS[patternType] !== undefined
-      || patternType === "clarke";
-    if (needsExtraOctave) {
-      var extra = getScaleNotes(tonic, modeType, endOctave, endOctave + 1);
-      notes = notes.concat(extra.slice(1));
+    // Build a wide-enough notes array that covers both ascending
+    // (needs extra octave above for upper notes of dyads/chords) and
+    // descending (needs extra octave below for lower notes).
+    var lowOctave = Math.max(0, startOctave - 1);
+    var allScaleNotes = getScaleNotes(tonic, modeType, lowOctave, endOctave + 1);
+    // Append one more octave above for the highest ascending pairs
+    {
+      var extraOct = getScaleNotes(tonic, modeType, endOctave + 1, endOctave + 2);
+      allScaleNotes = allScaleNotes.concat(extraOct.slice(1));
     }
 
-    notes = applyPattern(notes, patternType, octaves);
+    // Tonic at startOctave lives at this index in allScaleNotes
+    var startIdx = 7 * (startOctave - lowOctave);
+    // Tonic at endOctave lives at this index
+    var endIdx   = 7 * (endOctave - lowOctave);
 
-    // Apply direction (ascending, descending, or up+down)
-    var direction = directionSelect.value;
-    if (direction === "descending") {
-      notes = notes.slice().reverse();
-    } else if (direction === "ascendingDescending") {
-      var down = notes.slice(0, -1).reverse();
-      notes = notes.concat(down);
+    var notes = [];
+    if (startOctave <= endOctave) {
+      if (direction === "ascending") {
+        // Scale pattern uses endIdx (no "extra root" past range); other patterns need ascEndIdx
+        var ascEndIdx = patternType === "scale" ? endIdx : startIdx + 8 * octaves - 1;
+        notes = generateAscendingPattern(allScaleNotes, patternType, startIdx, ascEndIdx);
+      } else if (direction === "descending") {
+        notes = generateDescendingPattern(allScaleNotes, patternType, startIdx, endIdx);
+      } else if (direction === "ascendingDescending") {
+        // For interval / chord / clarke patterns, stop ascending one root
+        // before the tonic so the turn-around pair is naturally the first
+        // descending pair (root goes down by the interval instead of up).
+        var isScale = patternType === "scale";
+        var ascEndIdx = isScale ? endIdx : endIdx - 1;
+        var up   = generateAscendingPattern(allScaleNotes, patternType, startIdx, ascEndIdx);
+        var down = generateDescendingPattern(allScaleNotes, patternType, startIdx, endIdx);
+        // Scale still needs the top tonic trimmed from descending.
+        var trimCount = isScale ? 1 : 0;
+        notes = up.concat(down.slice(trimCount));
+      }
     }
 
-    currentNotes    = notes;
+    // Drop the last note from interval patterns in descending / asc+desc direction
+    if ((direction === "descending" || direction === "ascendingDescending") && notes.length > 0 && INTERVAL_OFFSETS[patternType] !== undefined) {
+      notes.pop();
+    }
+
+    // For Asc+Desc interval patterns, insert a duplicate of the turn-around
+    // root note so it appears as a half note + quarter note in the score.
+    var durations = [];
+    if (direction === "ascendingDescending" && INTERVAL_OFFSETS[patternType] !== undefined && notes.length > 0) {
+      // Turn-around root is at the start of the descending half
+      var peakIdx = 2 * (endIdx - startIdx);
+      if (peakIdx >= 0 && peakIdx < notes.length) {
+        var peakNote = notes[peakIdx];
+        notes.splice(peakIdx + 1, 0, peakNote);
+        durations = notes.map(function () { return "q"; });
+        durations[peakIdx] = "h";
+      } else {
+        durations = notes.map(function () { return "q"; });
+      }
+    } else {
+      durations = notes.map(function () { return "q"; });
+    }
+
+    currentNotes     = notes;
+    currentDurations = durations;
 
     var keySigName    = useKeySig ? getKeySignature(tonic, modeType) : null;
     var alteredPcs    = keySigName ? alteredPitchClasses(keySigName) : new Set();
@@ -425,12 +545,14 @@
 
     var numSystems = Math.ceil(n / perSystem);
     var systems = [];
+    var systemDurations = [];
     var idx = 0;
     for (var s = 0; s < numSystems; s++) {
       var remaining        = n - idx;
       var remainingSystems = numSystems - s;
       var count            = Math.ceil(remaining / remainingSystems);
       systems.push(notes.slice(idx, idx + count));
+      systemDurations.push(currentDurations.slice(idx, idx + count));
       idx += count;
     }
 
@@ -444,15 +566,17 @@
     var ctx = renderer.getContext();
 
     systems.forEach(function (systemNotes, si) {
+      var sysDurs = systemDurations[si];
       var y = STAVE_TOP + noteNamePad + si * (SYSTEM_HEIGHT + extraPadPerSys);
       var stave = new Stave(10, y, SYSTEM_WIDTH - 20);
       stave.addClef("bass");
       if (haveKeySig) stave.addKeySignature(keySigName);
       stave.setContext(ctx).draw();
 
-      var staveNotes = systemNotes.map(function (tonalNote) {
+      var staveNotes = systemNotes.map(function (tonalNote, ni) {
         var key = toVexKey(tonalNote);
-        var sn  = new StaveNote({ keys: [key], duration: "q", clef: "bass", autoStem: true });
+        var dur = sysDurs[ni] || "q";
+        var sn  = new StaveNote({ keys: [key], duration: dur, clef: "bass", autoStem: true });
         var pc  = Tonal.Note.pitchClass(tonalNote);
         var acc = accidentalType(pc);
         if (acc && (!haveKeySig || !alteredPcs.has(pc))) {
@@ -476,7 +600,11 @@
         return sn;
       });
 
-      var voice = new Voice({ num_beats: systemNotes.length, beat_value: 4 });
+      var totalBeats = 0;
+      for (var d = 0; d < sysDurs.length; d++) {
+        totalBeats += sysDurs[d] === "h" ? 2 : 1;
+      }
+      var voice = new Voice({ num_beats: totalBeats, beat_value: 4 });
       if (Voice.Mode) voice.setMode(Voice.Mode.SOFT);
       voice.addTickables(staveNotes);
 
