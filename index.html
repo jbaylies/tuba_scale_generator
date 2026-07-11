@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tuba Scale Studio</title>
+  <title>Tuba Scale Generator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -12,7 +12,7 @@
 <body>
   <div class="app">
     <header class="hero">
-      <h1>Tuba Scale Studio</h1>
+      <h1>Tuba Scale Generator</h1>
       <p class="subtitle">Pick a key and mode, choose your range, and see the scale notated for tuba!</p>
     </header>
 
@@ -33,7 +33,7 @@
         </div>
       </div>
 
-      <div class="control control-narrow">
+      <div class="control control-narrow octave-control">
         <label for="startOctaveSelect">Start Octave</label>
         <div class="select-wrap">
           <select id="startOctaveSelect"></select>
@@ -41,7 +41,7 @@
         </div>
       </div>
 
-      <div class="control control-narrow">
+      <div class="control control-narrow octave-control">
         <label for="endOctaveSelect">End Octave</label>
         <div class="select-wrap">
           <select id="endOctaveSelect"></select>
@@ -49,58 +49,82 @@
         </div>
       </div>
 
-      <div class="control control-narrow">
-        <label for="tubaSelect">Tuba</label>
-        <div class="select-wrap">
-          <select id="tubaSelect"></select>
-          <span class="select-caret" aria-hidden="true">▾</span>
-        </div>
-      </div>
-
-      <div class="control">
-        <label for="patternSelect">Pattern</label>
-        <div class="select-wrap">
-          <select id="patternSelect"></select>
-          <span class="select-caret" aria-hidden="true">▾</span>
-        </div>
-      </div>
-
-      <div class="control control-narrow">
-        <label for="directionSelect">Direction</label>
-        <div class="select-wrap">
-          <select id="directionSelect"></select>
-          <span class="select-caret" aria-hidden="true">▾</span>
-        </div>
-      </div>
-
-      <div class="control control-toggle">
-        <label for="keySigToggle">Key Signature</label>
-        <label class="switch">
-          <input type="checkbox" id="keySigToggle" checked />
-          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-        </label>
-      </div>
-
-      <div class="control control-toggle">
-        <label for="fingeringToggle">Fingerings</label>
-        <label class="switch">
-          <input type="checkbox" id="fingeringToggle" checked />
-          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-        </label>
-      </div>
-
-      <div class="control control-toggle">
-        <label for="noteNameToggle">Note Names</label>
-        <label class="switch">
-          <input type="checkbox" id="noteNameToggle" checked />
-          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
-        </label>
-      </div>
-
       <button id="playBtn" class="play-btn" type="button" aria-label="Play scale">
         <span class="play-icon" aria-hidden="true">▶</span>
         <span class="play-label">Play</span>
       </button>
+
+      <button id="settingsToggle" class="settings-toggle" type="button" aria-expanded="false" aria-label="Toggle advanced settings">
+        <span class="settings-icon" aria-hidden="true">⚙</span>
+        <span class="settings-label">Settings</span>
+        <span class="settings-caret" aria-hidden="true">▾</span>
+      </button>
+
+      <div id="advancedControls" class="advanced-controls collapsed">
+        <div class="control control-narrow octave-control-mobile">
+          <label for="startOctaveSelectMobile">Start Octave</label>
+          <div class="select-wrap">
+            <select id="startOctaveSelectMobile"></select>
+            <span class="select-caret" aria-hidden="true">▾</span>
+          </div>
+        </div>
+
+        <div class="control control-narrow octave-control-mobile">
+          <label for="endOctaveSelectMobile">End Octave</label>
+          <div class="select-wrap">
+            <select id="endOctaveSelectMobile"></select>
+            <span class="select-caret" aria-hidden="true">▾</span>
+          </div>
+        </div>
+
+        <div class="control control-narrow">
+          <label for="tubaSelect">Tuba</label>
+          <div class="select-wrap">
+            <select id="tubaSelect"></select>
+            <span class="select-caret" aria-hidden="true">▾</span>
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="patternSelect">Pattern</label>
+          <div class="select-wrap">
+            <select id="patternSelect"></select>
+            <span class="select-caret" aria-hidden="true">▾</span>
+          </div>
+        </div>
+
+        <div class="control control-narrow">
+          <label for="directionSelect">Direction</label>
+          <div class="select-wrap">
+            <select id="directionSelect"></select>
+            <span class="select-caret" aria-hidden="true">▾</span>
+          </div>
+        </div>
+
+        <div class="control control-toggle">
+          <label for="keySigToggle">Key Signature</label>
+          <label class="switch">
+            <input type="checkbox" id="keySigToggle" checked />
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control control-toggle">
+          <label for="fingeringToggle">Fingerings</label>
+          <label class="switch">
+            <input type="checkbox" id="fingeringToggle" checked />
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="control control-toggle">
+          <label for="noteNameToggle">Note Names</label>
+          <label class="switch">
+            <input type="checkbox" id="noteNameToggle" checked />
+            <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+          </label>
+        </div>
+      </div>
     </section>
 
     <section class="info-bar" aria-live="polite">

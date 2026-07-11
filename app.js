@@ -72,10 +72,13 @@
     { value: "diatonicSeventhsIntervals", label: "Intervals: 7ths (1-7, 2-1, 3-2, …)" },
     { value: "diatonicTriads",         label: "Diatonic Triads (1-3-5, 2-4-6, …)" },
     { value: "diatonicTriadsDesc",     label: "Diatonic Triads desc (5-3-1, 6-4-2, …)" },
+    { value: "diatonicTriadsAlt",       label: "Diatonic Triads Alt. (1-3-5, 6-4-2, …)" },
     { value: "diatonicSevenths",       label: "Diatonic 7ths (1-3-5-7, 2-4-6-1, …)" },
     { value: "diatonicSeventhsDesc",   label: "Diatonic 7ths desc (7-5-3-1, 1-6-4-2, …)" },
+    { value: "diatonicSeventhsAlt",     label: "Diatonic 7ths Alt. (1-3-5-7, 1-6-4-2, …)" },
     { value: "diatonicNinths",         label: "Diatonic 9ths (1-3-5-7-9, 2-4-6-1-3, …)" },
     { value: "diatonicNinthsDesc",     label: "Diatonic 9ths desc (9-7-5-3-1, …)" },
+    { value: "diatonicNinthsAlt",       label: "Diatonic 9ths Alt. (1-3-5-7-9, 3-1-6-4-2, …)" },
     { value: "clarke",                 label: "Clarke (1-2-3-1, 2-3-4-2, …)" },
   ];
 
@@ -128,6 +131,8 @@
   const modeSelect         = document.getElementById("modeSelect");
   const startOctaveSelect  = document.getElementById("startOctaveSelect");
   const endOctaveSelect    = document.getElementById("endOctaveSelect");
+  const startOctaveSelectMobile = document.getElementById("startOctaveSelectMobile");
+  const endOctaveSelectMobile   = document.getElementById("endOctaveSelectMobile");
   const keySigToggle       = document.getElementById("keySigToggle");
   const fingeringToggle    = document.getElementById("fingeringToggle");
   const noteNameToggle     = document.getElementById("noteNameToggle");
@@ -135,6 +140,8 @@
   const patternSelect      = document.getElementById("patternSelect");
   const directionSelect    = document.getElementById("directionSelect");
   const playBtn         = document.getElementById("playBtn");
+  const playIconEl      = playBtn.querySelector(".play-icon");
+  const playLabelEl     = playBtn.querySelector(".play-label");
   const scaleNameEl     = document.getElementById("scaleName");
   const noteCountEl     = document.getElementById("noteCount");
   const notationHintEl  = document.getElementById("notationHint");
@@ -169,9 +176,13 @@
   [0, 1, 2, 3, 4, 5].forEach(function (o) {
     startOctaveSelect.add(new Option("Octave " + o, String(o)));
     endOctaveSelect.add(new Option("Octave " + o, String(o)));
+    startOctaveSelectMobile.add(new Option("Octave " + o, String(o)));
+    endOctaveSelectMobile.add(new Option("Octave " + o, String(o)));
   });
   startOctaveSelect.value = "1";
   endOctaveSelect.value   = "2";
+  startOctaveSelectMobile.value = "1";
+  endOctaveSelectMobile.value   = "2";
 
   /**
    * Return the notes for a chord rooted at index i.
@@ -226,6 +237,21 @@
       return result;
     }
 
+    if (CHORD_ALT_OF[pattern] !== undefined) {
+      var altSteps = CHORD_STEPS[CHORD_ALT_OF[pattern]];
+      var result = [];
+      var lastStep = altSteps[altSteps.length - 1];
+      for (var i = startIdx; i <= endIdx; i++) {
+        if (i + lastStep >= allNotes.length) break;
+        if ((i - startIdx) % 2 === 0) {
+          for (var si = 0; si < altSteps.length; si++) result.push(allNotes[i + altSteps[si]]);
+        } else {
+          for (var si = altSteps.length - 1; si >= 0; si--) result.push(allNotes[i + altSteps[si]]);
+        }
+      }
+      return result;
+    }
+
     if (pattern === "clarke") {
       var result = [];
       for (var i = startIdx; i < endIdx && i + 2 < allNotes.length; i++) {
@@ -275,6 +301,21 @@
       for (var i = endIdx; i >= startIdx; i--) {
         if (i + steps[steps.length - 1] >= allNotes.length) continue;
         result = result.concat(getChordNotes(allNotes, i, steps, isDescChord));
+      }
+      return result;
+    }
+
+    if (CHORD_ALT_OF[pattern] !== undefined) {
+      var altSteps = CHORD_STEPS[CHORD_ALT_OF[pattern]];
+      var result = [];
+      var lastStep = altSteps[altSteps.length - 1];
+      for (var i = endIdx; i >= startIdx; i--) {
+        if (i + lastStep >= allNotes.length) continue;
+        if ((i - startIdx) % 2 === 0) {
+          for (var si = 0; si < altSteps.length; si++) result.push(allNotes[i + altSteps[si]]);
+        } else {
+          for (var si = altSteps.length - 1; si >= 0; si--) result.push(allNotes[i + altSteps[si]]);
+        }
       }
       return result;
     }
@@ -372,6 +413,12 @@
     diatonicTriadsDesc: "diatonicTriads",
     diatonicSeventhsDesc: "diatonicSevenths",
     diatonicNinthsDesc: "diatonicNinths"
+  };
+
+  var CHORD_ALT_OF = {
+    diatonicTriadsAlt:    "diatonicTriads",
+    diatonicSeventhsAlt:  "diatonicSevenths",
+    diatonicNinthsAlt:    "diatonicNinths"
   };
 
   var MODE_DEGREE_DOWN = {
@@ -509,7 +556,18 @@
       notationHintEl.innerHTML = notes.map(function (n) {
         return '<span class="note-name">' + n + "</span>";
       }).join('<span class="note-sep"> \u00B7 </span>');
+      // Re-append toggle button (wiped by innerHTML)
+      notationHintEl.appendChild(noteToggle);
       notationHintEl.classList.remove("hidden");
+
+      // Check for overflow and add collapse toggle if >3 lines
+      setTimeout(function () {
+        notationHintEl.classList.remove("has-overflow", "expanded");
+        noteToggle.textContent = "Show all notes ▾";
+        if (notationHintEl.scrollHeight > notationHintEl.clientHeight) {
+          notationHintEl.classList.add("has-overflow");
+        }
+      }, 0);
     } else {
       notationHintEl.classList.add("hidden");
     }
@@ -531,12 +589,16 @@
 
     // Layout constants (in SVG pixels)
     var SYSTEM_WIDTH  = 880;
-    var SYSTEM_HEIGHT = 165;
-    var STAVE_TOP     = 20;
+    var STAVE_TOP     = 16;
     var NOTE_PX       = 45;
     var CLEF_PX       = 60;
     var PAD_PX        = 30;
     var MAX_PER_LINE  = 10;
+    var STAFF_HEIGHT  = 40;   // 5-line staff in px
+    var MIN_PAD       = 24;   // min padding above/below staff
+    var SEMITONE_PX   = 3;    // px per semitone above/below staff
+    var STAFF_TOP_MIDI = 57;  // A3 = top line of bass clef
+    var STAFF_BOT_MIDI = 41;  // F2 = bottom line of bass clef
 
     var keySigPad   = haveKeySig ? 70 : 0;
     var availWidth  = SYSTEM_WIDTH - CLEF_PX - keySigPad - PAD_PX;
@@ -556,18 +618,42 @@
       idx += count;
     }
 
+    // Compute dynamic heights per system based on note range
+    var systemHeights = [];
+    for (var si = 0; si < numSystems; si++) {
+      var sysNotes = systems[si];
+      var loMidi = 127, hiMidi = 0;
+      for (var ni = 0; ni < sysNotes.length; ni++) {
+        var midi = Tonal.Note.midi(sysNotes[ni]);
+        if (midi !== null && midi !== undefined) {
+          if (midi < loMidi) loMidi = midi;
+          if (midi > hiMidi) hiMidi = midi;
+        }
+      }
+      var abovePx = hiMidi > STAFF_TOP_MIDI ? (hiMidi - STAFF_TOP_MIDI) * SEMITONE_PX + MIN_PAD : MIN_PAD;
+      var belowPx = loMidi < STAFF_BOT_MIDI ? (STAFF_BOT_MIDI - loMidi) * SEMITONE_PX + MIN_PAD : MIN_PAD;
+      systemHeights.push(STAFF_HEIGHT + abovePx + belowPx);
+    }
+
     var fingeringPad  = showFingerings ? 24 : 0;
     var noteNamePad    = showNoteNames ? 20 : 0;
     var extraPadPerSys = fingeringPad + noteNamePad;
-    var totalHeight = STAVE_TOP + noteNamePad + numSystems * (SYSTEM_HEIGHT + extraPadPerSys) + 20;
+    var totalHeight = STAVE_TOP + noteNamePad;
+    for (var si2 = 0; si2 < numSystems; si2++) {
+      totalHeight += systemHeights[si2] + extraPadPerSys;
+    }
+    totalHeight += 16; // bottom padding
 
     var renderer = new Renderer(output, Renderer.Backends.SVG);
     renderer.resize(SYSTEM_WIDTH, totalHeight);
     var ctx = renderer.getContext();
 
+    var cumulativeY = STAVE_TOP + noteNamePad;
     systems.forEach(function (systemNotes, si) {
       var sysDurs = systemDurations[si];
-      var y = STAVE_TOP + noteNamePad + si * (SYSTEM_HEIGHT + extraPadPerSys);
+      var sysH = systemHeights[si];
+      var y = cumulativeY;
+      cumulativeY += sysH + extraPadPerSys;
       var stave = new Stave(10, y, SYSTEM_WIDTH - 20);
       stave.addClef("bass");
       if (haveKeySig) stave.addKeySignature(keySigName);
@@ -616,12 +702,45 @@
   /* ---------- Audio playback (Web Audio API) ---------- */
   var audioCtx = null;
   var playing  = false;
+  var activeNodes = []; // { osc, gain, filter } for stop cleanup
+  var playbackTimeouts = [];
+  var finishTimeout = null;
 
-  function play() {
-    if (playing || currentNotes.length === 0) return;
+  function stopPlayback() {
+    // Stop and disconnect all active oscillator chains
+    activeNodes.forEach(function (node) {
+      try { node.osc.stop(); } catch (e) {}
+      try { node.osc.disconnect(); } catch (e) {}
+      try { node.gain.disconnect(); } catch (e) {}
+      try { node.filter.disconnect(); } catch (e) {}
+    });
+    activeNodes = [];
+
+    // Clear all pending timeouts
+    playbackTimeouts.forEach(function (id) { clearTimeout(id); });
+    playbackTimeouts = [];
+    if (finishTimeout) { clearTimeout(finishTimeout); finishTimeout = null; }
+
+    // Reset UI state
+    playing = false;
+    playBtn.classList.remove("playing");
+    playIconEl.textContent = "▶";
+    playLabelEl.textContent = "Play";
+    var noteSpans = notationHintEl.querySelectorAll(".note-name");
+    noteSpans.forEach(function (s) { s.classList.remove("active"); });
+  }
+
+  function togglePlayback() {
+    if (playing) {
+      stopPlayback();
+      return;
+    }
+    if (currentNotes.length === 0) return;
+
     playing = true;
     playBtn.classList.add("playing");
-    playBtn.disabled = true;
+    playIconEl.textContent = "■";
+    playLabelEl.textContent = "Stop";
 
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") audioCtx.resume();
@@ -641,6 +760,8 @@
       var gain  = audioCtx.createGain();
       var filter = audioCtx.createBiquadFilter();
 
+      activeNodes.push({ osc: osc, gain: gain, filter: filter });
+
       osc.type = "sawtooth";
       osc.frequency.setValueAtTime(freq, t);
 
@@ -659,34 +780,106 @@
       osc.start(t);
       osc.stop(t + dur + 0.05);
 
-      setTimeout(function () {
+      var timeoutId = setTimeout(function () {
         noteSpans.forEach(function (s, idx) {
           s.classList.toggle("active", idx === i);
         });
       }, i * rate * 1000);
+      playbackTimeouts.push(timeoutId);
     });
 
     var totalMs = currentNotes.length * rate * 1000 + 250;
-    setTimeout(function () {
-      playing = false;
-      playBtn.classList.remove("playing");
-      playBtn.disabled = false;
-      noteSpans.forEach(function (s) { s.classList.remove("active"); });
+    finishTimeout = setTimeout(function () {
+      stopPlayback();
     }, totalMs);
   }
 
   /* ---------- Wire up & initial render ---------- */
-  keySelect.addEventListener("change", render);
-  modeSelect.addEventListener("change", render);
-  startOctaveSelect.addEventListener("change", render);
-  endOctaveSelect.addEventListener("change", render);
-  keySigToggle.addEventListener("change", render);
-  fingeringToggle.addEventListener("change", render);
-  noteNameToggle.addEventListener("change", render);
-  tubaSelect.addEventListener("change", render);
-  patternSelect.addEventListener("change", render);
-  directionSelect.addEventListener("change", render);
-  playBtn.addEventListener("click", play);
+  var PREFS_KEY = "tuba-scale-prefs";
 
+  function savePreferences() {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({
+        key: keySelect.value,
+        mode: modeSelect.value,
+        startOctave: startOctaveSelect.value,
+        endOctave: endOctaveSelect.value,
+        tuba: tubaSelect.value,
+        pattern: patternSelect.value,
+        direction: directionSelect.value,
+        keySig: keySigToggle.checked,
+        fingerings: fingeringToggle.checked,
+        noteNames: noteNameToggle.checked
+      }));
+    } catch (e) {}
+  }
+
+  function loadPreferences() {
+    try {
+      var saved = JSON.parse(localStorage.getItem(PREFS_KEY));
+      if (!saved) return;
+      if (saved.key) { keySelect.value = saved.key; }
+      if (saved.mode) { modeSelect.value = saved.mode; }
+      if (saved.startOctave) { startOctaveSelect.value = saved.startOctave; startOctaveSelectMobile.value = saved.startOctave; }
+      if (saved.endOctave) { endOctaveSelect.value = saved.endOctave; endOctaveSelectMobile.value = saved.endOctave; }
+      if (saved.tuba) { tubaSelect.value = saved.tuba; }
+      if (saved.pattern) { patternSelect.value = saved.pattern; }
+      if (saved.direction) { directionSelect.value = saved.direction; }
+      if (typeof saved.keySig === "boolean") { keySigToggle.checked = saved.keySig; }
+      if (typeof saved.fingerings === "boolean") { fingeringToggle.checked = saved.fingerings; }
+      if (typeof saved.noteNames === "boolean") { noteNameToggle.checked = saved.noteNames; }
+    } catch (e) {}
+  }
+
+  keySelect.addEventListener("change", function () { render(); savePreferences(); });
+  modeSelect.addEventListener("change", function () { render(); savePreferences(); });
+  startOctaveSelect.addEventListener("change", function () { startOctaveSelectMobile.value = startOctaveSelect.value; render(); savePreferences(); });
+  endOctaveSelect.addEventListener("change", function () { endOctaveSelectMobile.value = endOctaveSelect.value; render(); savePreferences(); });
+  startOctaveSelectMobile.addEventListener("change", function () {
+    startOctaveSelect.value = startOctaveSelectMobile.value;
+    // render + savePreferences fire via the main select's change listener
+  });
+  endOctaveSelectMobile.addEventListener("change", function () {
+    endOctaveSelect.value = endOctaveSelectMobile.value;
+    // render + savePreferences fire via the main select's change listener
+  });
+  keySigToggle.addEventListener("change", function () { render(); savePreferences(); });
+  fingeringToggle.addEventListener("change", function () { render(); savePreferences(); });
+  noteNameToggle.addEventListener("change", function () { render(); savePreferences(); });
+  tubaSelect.addEventListener("change", function () { render(); savePreferences(); });
+  patternSelect.addEventListener("change", function () { render(); savePreferences(); });
+  directionSelect.addEventListener("change", function () { render(); savePreferences(); });
+  playBtn.addEventListener("click", togglePlayback);
+
+  /* ---------- Settings toggle ---------- */
+  var settingsToggle = document.getElementById("settingsToggle");
+  var advancedControls = document.getElementById("advancedControls");
+  var SETTINGS_KEY = "tuba-scale-settings-open";
+
+  // Restore saved state on load
+  if (localStorage.getItem(SETTINGS_KEY) === "true") {
+    advancedControls.classList.remove("collapsed");
+    settingsToggle.setAttribute("aria-expanded", "true");
+  }
+
+  settingsToggle.addEventListener("click", function () {
+    var isCollapsed = advancedControls.classList.toggle("collapsed");
+    settingsToggle.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+    localStorage.setItem(SETTINGS_KEY, isCollapsed ? "false" : "true");
+    // Re-render after expand to size notation correctly
+    if (!isCollapsed) render();
+  });
+
+  /* ---------- Note-names collapse toggle ---------- */
+  var noteToggle = document.createElement("button");
+  noteToggle.className = "note-toggle";
+  noteToggle.textContent = "Show all notes ▾";
+  noteToggle.addEventListener("click", function () {
+    var expanded = notationHintEl.classList.toggle("expanded");
+    noteToggle.textContent = expanded ? "Show less ▴" : "Show all notes ▾";
+  });
+  notationHintEl.appendChild(noteToggle);
+
+  loadPreferences();
   render();
 })();
