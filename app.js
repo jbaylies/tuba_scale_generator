@@ -64,15 +64,16 @@
   ];
 
   var PATTERNS = [
-    { value: "ascending",              label: "Ascending" },
-    { value: "descending",             label: "Descending" },
-    { value: "ascendingDescending",    label: "Ascending + Descending" },
-    { value: "arpeggio",               label: "Arpeggio (1\u20133\u20135\u20138)" },
-    { value: "arpeggioUpDown",         label: "Arpeggio (1\u20133\u20135\u20138\u20135\u20133\u20131)" },
+    { value: "scale",                  label: "Scale" },
+    { value: "diatonicThirds",         label: "Intervals: 3rds (1-3, 2-4, 3-5, …)" },
+    { value: "diatonicFourths",        label: "Intervals: 4ths (1-4, 2-5, 3-6, …)" },
+    { value: "diatonicFifths",         label: "Intervals: 5ths (1-5, 2-6, 3-7, …)" },
+    { value: "diatonicSixths",         label: "Intervals: 6ths (1-6, 2-7, 3-1, …)" },
+    { value: "diatonicSeventhsIntervals", label: "Intervals: 7ths (1-7, 2-1, 3-2, …)" },
     { value: "diatonicTriads",         label: "Diatonic Triads (1-3-5, 2-4-6, …)" },
-    { value: "diatonicTriadsUpDown",   label: "Diatonic Triads Up + Down" },
     { value: "diatonicSevenths",       label: "Diatonic 7ths (1-3-5-7, 2-4-6-1, …)" },
-    { value: "diatonicSeventhsUpDown", label: "Diatonic 7ths Up + Down" },
+    { value: "diatonicNinths",         label: "Diatonic 9ths (1-3-5-7-9, 2-4-6-1-3, …)" },
+    { value: "clarke",                 label: "Clarke (1-2-3-1, 2-3-4-2, …)" },
   ];
 
   /**
@@ -102,14 +103,21 @@
     return _fingeringByMidi[lookupMidi] || "";
   }
 
+  var DIRECTION = [
+    { value: "ascending",           label: "Ascending" },
+    { value: "descending",          label: "Descending" },
+    { value: "ascendingDescending", label: "Asc + Desc" },
+  ];
+
   const MODES = [
-    { value: "ionian",     label: "Major (Ionian)" },
-    { value: "dorian",     label: "Dorian" },
-    { value: "phrygian",   label: "Phrygian" },
-    { value: "lydian",     label: "Lydian" },
-    { value: "mixolydian", label: "Mixolydian" },
-    { value: "aeolian",    label: "Natural Minor (Aeolian)" },
-    { value: "locrian",    label: "Locrian" },
+    { value: "ionian",          label: "Major (Ionian)" },
+    { value: "dorian",          label: "Dorian" },
+    { value: "phrygian",        label: "Phrygian" },
+    { value: "lydian",          label: "Lydian" },
+    { value: "mixolydian",      label: "Mixolydian" },
+    { value: "mixolydianFlat6", label: "Mixolydian \u266D6" },
+    { value: "aeolian",         label: "Natural Minor (Aeolian)" },
+    { value: "locrian",         label: "Locrian" },
   ];
 
   /* ---------- DOM ---------- */
@@ -122,6 +130,7 @@
   const noteNameToggle     = document.getElementById("noteNameToggle");
   const tubaSelect         = document.getElementById("tubaSelect");
   const patternSelect      = document.getElementById("patternSelect");
+  const directionSelect    = document.getElementById("directionSelect");
   const playBtn         = document.getElementById("playBtn");
   const scaleNameEl     = document.getElementById("scaleName");
   const noteCountEl     = document.getElementById("noteCount");
@@ -147,14 +156,19 @@
   PATTERNS.forEach(function (p) {
     patternSelect.add(new Option(p.label, p.value));
   });
-  patternSelect.value = "ascending";
+  patternSelect.value = "scale";
+
+  DIRECTION.forEach(function (d) {
+    directionSelect.add(new Option(d.label, d.value));
+  });
+  directionSelect.value = "ascending";
 
   [0, 1, 2, 3, 4, 5].forEach(function (o) {
     startOctaveSelect.add(new Option("Octave " + o, String(o)));
     endOctaveSelect.add(new Option("Octave " + o, String(o)));
   });
   startOctaveSelect.value = "1";
-  endOctaveSelect.value   = "3";
+  endOctaveSelect.value   = "2";
 
   /**
    * Transform an ascending scale note list into the requested pattern.
@@ -165,51 +179,41 @@
   function applyPattern(notes, pattern) {
     if (!notes || notes.length === 0) return notes;
 
-    if (pattern === "ascending") return notes;
+    if (pattern === "scale") return notes;
 
-    if (pattern === "descending") return notes.slice().reverse();
-
-    if (pattern === "ascendingDescending") {
-      var down = notes.slice(0, -1).reverse();
-      return notes.concat(down);
-    }
-
-    if (pattern === "arpeggio" || pattern === "arpeggioUpDown") {
-      var arp = [];
-      var totalOctaves = Math.floor((notes.length - 1) / 7);
-      for (var o = 0; o < totalOctaves; o++) {
-        var base = o * 7;
-        arp.push(notes[base]);
-        arp.push(notes[base + 2]);
-        arp.push(notes[base + 4]);
-      }
-      arp.push(notes[notes.length - 1]);
-      if (pattern === "arpeggio") return arp;
-      var arpDown = arp.slice(0, -1).reverse();
-      return arp.concat(arpDown);
-    }
-
-    if (pattern === "diatonicTriads" || pattern === "diatonicTriadsUpDown") {
+    if (INTERVAL_OFFSETS[pattern] !== undefined) {
+      var offset = INTERVAL_OFFSETS[pattern];
       var result = [];
-      for (var i = 0; i + 4 < notes.length; i++) {
+      for (var i = 0; i < 8 && i + offset < notes.length; i++) {
         result.push(notes[i]);
-        result.push(notes[i + 2]);
-        result.push(notes[i + 4]);
+        result.push(notes[i + offset]);
       }
-      if (pattern === "diatonicTriads") return result;
-      return result.concat(result.slice(0, -3).reverse());
+      return result;
     }
 
-    if (pattern === "diatonicSevenths" || pattern === "diatonicSeventhsUpDown") {
-      var result7 = [];
-      for (var j = 0; j + 6 < notes.length; j++) {
-        result7.push(notes[j]);
-        result7.push(notes[j + 2]);
-        result7.push(notes[j + 4]);
-        result7.push(notes[j + 6]);
+    if (CHORD_STEPS[pattern] !== undefined) {
+      var steps = CHORD_STEPS[pattern];
+      var result = [];
+      for (var i = 0; i < 8; i++) {
+        var maxIdx = i + steps[steps.length - 1];
+        if (maxIdx >= notes.length) break;
+        for (var s = 0; s < steps.length; s++) {
+          result.push(notes[i + steps[s]]);
+        }
       }
-      if (pattern === "diatonicSevenths") return result7;
-      return result7.concat(result7.slice(0, -4).reverse());
+      return result;
+    }
+
+    if (pattern === "clarke") {
+      var result = [];
+      for (var i = 0; i < 7 && i + 2 < notes.length; i++) {
+        result.push(notes[i]);
+        result.push(notes[i + 1]);
+        result.push(notes[i + 2]);
+        result.push(notes[i]);
+      }
+      result.push(notes.length > 7 ? notes[7] : notes[0]);
+      return result;
     }
 
     return notes;
@@ -220,9 +224,24 @@
   function getScaleNotes(tonic, modeType, startOctave, endOctave) {
     if (startOctave > endOctave) return [];
     var tonicWithOct = tonic + startOctave;
-    var scale = Tonal.Scale.get(tonicWithOct + " " + modeType);
+
+    // Construct custom scales that Tonal.js doesn't ship with
+    var lookupMode = modeType;
+    if (modeType === "mixolydianFlat6") lookupMode = "mixolydian";
+
+    var scale = Tonal.Scale.get(tonicWithOct + " " + lookupMode);
     if (!scale || scale.empty || !scale.notes || scale.notes.length === 0) return [];
-    var base = scale.notes;
+    var base = scale.notes.slice();
+
+    // Flatten the 6th degree (index 5) for Mixolydian ♭6
+    if (modeType === "mixolydianFlat6") {
+      var flattened = Tonal.Note.transpose(base[5], "-2m");
+      var pc = Tonal.Note.pitchClass(flattened);
+      if (SHARP_PCS[pc]) {
+        flattened = SHARP_PCS[pc] + Tonal.Note.octave(flattened);
+      }
+      base[5] = flattened;
+    }
 
     var octaves = endOctave - startOctave;
     var out = [];
@@ -258,14 +277,31 @@
     "F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb",
   ]);
 
+  var SHARP_PCS = { "C#": "Db", "D#": "Eb", "E#": "F", "F#": "Gb", "G#": "Ab", "A#": "Bb", "B#": "C" };
+
+  var INTERVAL_OFFSETS = {
+    diatonicThirds: 2,
+    diatonicFourths: 3,
+    diatonicFifths: 4,
+    diatonicSixths: 5,
+    diatonicSeventhsIntervals: 6
+  };
+
+  var CHORD_STEPS = {
+    diatonicTriads:   [0, 2, 4],
+    diatonicSevenths: [0, 2, 4, 6],
+    diatonicNinths:   [0, 2, 4, 6, 8]
+  };
+
   var MODE_DEGREE_DOWN = {
-    ionian:     "1P",
-    dorian:     "2M",
-    phrygian:   "3M",
-    lydian:     "4P",
-    mixolydian: "5P",
-    aeolian:    "6M",
-    locrian:    "7M",
+    ionian:          "1P",
+    dorian:          "2M",
+    phrygian:        "3M",
+    lydian:          "4P",
+    mixolydian:      "5P",
+    mixolydianFlat6: "5P",
+    aeolian:         "6M",
+    locrian:         "7M",
   };
 
   function getKeySignature(tonic, modeType) {
@@ -303,7 +339,29 @@
     var tubaShift   = parseInt(tubaSelect.value, 10);
     var notes       = getScaleNotes(tonic, modeType, startOctave, endOctave);
     var patternType = patternSelect.value;
-    notes           = applyPattern(notes, patternType);
+
+    // For interval and chord patterns, extend range by one octave so
+    // the upper notes of each dyad / chord can exceed endOctave while
+    // roots stay within one octave (8 roots).
+    var needsExtraOctave = INTERVAL_OFFSETS[patternType] !== undefined
+      || CHORD_STEPS[patternType] !== undefined
+      || patternType === "clarke";
+    if (needsExtraOctave) {
+      var extra = getScaleNotes(tonic, modeType, endOctave, endOctave + 1);
+      notes = notes.concat(extra.slice(1));
+    }
+
+    notes = applyPattern(notes, patternType);
+
+    // Apply direction (ascending, descending, or up+down)
+    var direction = directionSelect.value;
+    if (direction === "descending") {
+      notes = notes.slice().reverse();
+    } else if (direction === "ascendingDescending") {
+      var down = notes.slice(0, -1).reverse();
+      notes = notes.concat(down);
+    }
+
     currentNotes    = notes;
 
     var keySigName    = useKeySig ? getKeySignature(tonic, modeType) : null;
@@ -349,8 +407,8 @@
 
     // Layout constants (in SVG pixels)
     var SYSTEM_WIDTH  = 880;
-    var SYSTEM_HEIGHT = 190;
-    var STAVE_TOP     = 40;
+    var SYSTEM_HEIGHT = 165;
+    var STAVE_TOP     = 20;
     var NOTE_PX       = 45;
     var CLEF_PX       = 60;
     var PAD_PX        = 30;
@@ -437,7 +495,7 @@
     if (audioCtx.state === "suspended") audioCtx.resume();
 
     var now       = audioCtx.currentTime;
-    var rate      = 0.42;
+    var rate      = 0.21;
     var noteSpans = notationHintEl.querySelectorAll(".note-name");
 
     currentNotes.forEach(function (note, i) {
@@ -495,6 +553,7 @@
   noteNameToggle.addEventListener("change", render);
   tubaSelect.addEventListener("change", render);
   patternSelect.addEventListener("change", render);
+  directionSelect.addEventListener("change", render);
   playBtn.addEventListener("click", play);
 
   render();
