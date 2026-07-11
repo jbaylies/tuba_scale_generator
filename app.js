@@ -935,11 +935,6 @@
 
   /* ---------- Print sheet music ---------- */
   printBtn.addEventListener("click", function () {
-    if (typeof printJS === "undefined") {
-      window.print();
-      return;
-    }
-
     var title = scaleNameEl.textContent;
     if (title === "\u2014") title = "Tuba Scale";
 
@@ -951,24 +946,23 @@
       title = title + " — " + shortPattern;
     }
 
-    printJS({
-      printable: "vexflow-output-print",
-      type: "html",
-      documentTitle: title,
-      header: "<h2 style='font-family:serif;text-align:center;margin:0 0 12px;color:#111;'>" + title + "</h2>",
-      style: "\
-        html, body { background: white !important; color: black !important; }\
-        * { background: white !important; color: black !important; }\
-        svg { max-width: 100%; height: auto; }\
-        svg text { fill: #000 !important; }\
-        svg path { stroke: #000 !important; fill: #000 !important; }\
-        svg rect { fill: #fff !important; stroke: #000 !important; }\
-        .print-page { page-break-after: always; }\
-        .print-page:last-child { page-break-after: auto; }\
-        .staff-system { break-inside: avoid; }\
-      ",
-      scanStyles: true,
-    });
+    // Clean up old print title if printing multiple times
+    var existingTitle = outputPrint.querySelector(".print-title");
+    if (existingTitle) existingTitle.remove();
+
+    // Inject title header natively into the print container so it
+    // appears in the printed output without relying on printJS.
+    var titleEl = document.createElement("h2");
+    titleEl.className = "print-title";
+    titleEl.style.cssText = "font-family:serif;text-align:center;margin:0 0 12px;color:#111;";
+    titleEl.textContent = title;
+
+    outputPrint.insertBefore(titleEl, outputPrint.firstChild);
+
+    var originalTitle = document.title;
+    document.title = title; // Temporarily change document title for PDF export filename
+    window.print();
+    document.title = originalTitle;
   });
 
   /* ---------- Settings toggle ---------- */
