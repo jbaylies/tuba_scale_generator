@@ -140,12 +140,19 @@
   const patternSelect      = document.getElementById("patternSelect");
   const directionSelect    = document.getElementById("directionSelect");
   const playBtn         = document.getElementById("playBtn");
+  const playBtnDesktop  = document.getElementById("playBtnDesktop");
   const playIconEl      = playBtn.querySelector(".play-icon");
   const playLabelEl     = playBtn.querySelector(".play-label");
+  const playIconDesktopEl  = playBtnDesktop ? playBtnDesktop.querySelector(".play-icon") : null;
+  const playLabelDesktopEl = playBtnDesktop ? playBtnDesktop.querySelector(".play-label") : null;
+  const printBtn        = document.getElementById("printBtn");
+  const bpmSlider       = document.getElementById("bpmSlider");
+  const bpmValueEl      = document.getElementById("bpmValue");
   const scaleNameEl     = document.getElementById("scaleName");
   const noteCountEl     = document.getElementById("noteCount");
   const notationHintEl  = document.getElementById("notationHint");
   const output          = document.getElementById("vexflow-output");
+  const outputPrint     = document.getElementById("vexflow-output-print");
 
   /* ---------- Populate dropdowns ---------- */
   KEYS.forEach(function (k) {
@@ -453,6 +460,52 @@
     return altered;
   }
 
+  /* ---------- Shared stave rendering helper ---------- */
+  function renderSystem(ctx, systemNotes, sysDurs, y, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, availWidth, SYSTEM_WIDTH) {
+    var stave = new Stave(10, y, SYSTEM_WIDTH - 20);
+    stave.addClef("bass");
+    if (haveKeySig) stave.addKeySignature(keySigName);
+    stave.setContext(ctx).draw();
+
+    var staveNotes = systemNotes.map(function (tonalNote, ni) {
+      var key = toVexKey(tonalNote);
+      var dur = sysDurs[ni] || "q";
+      var sn  = new StaveNote({ keys: [key], duration: dur, clef: "bass", autoStem: true });
+      var pc  = Tonal.Note.pitchClass(tonalNote);
+      var acc = accidentalType(pc);
+      if (acc && (!haveKeySig || !alteredPcs.has(pc))) {
+        sn.addModifier(new Accidental(acc), 0);
+      }
+      if (showNoteNames) {
+        var nameAnnotation = new Annotation(tonalNote);
+        nameAnnotation.setVerticalJustification(Annotation.VerticalJustify.TOP);
+        nameAnnotation.setFont({ family: "Inter, system-ui, sans-serif", size: 9, weight: "400" });
+        sn.addModifier(nameAnnotation, 0);
+      }
+      if (showFingerings) {
+        var fingering = getFingering(tonalNote, tubaShift);
+        if (fingering) {
+          var annotation = new Annotation(fingering);
+          annotation.setVerticalJustification(Annotation.VerticalJustify.BOTTOM);
+          annotation.setFont({ family: "Inter, system-ui, sans-serif", size: 11, weight: "600" });
+          sn.addModifier(annotation, 0);
+        }
+      }
+      return sn;
+    });
+
+    var totalBeats = 0;
+    for (var d = 0; d < sysDurs.length; d++) {
+      totalBeats += sysDurs[d] === "h" ? 2 : 1;
+    }
+    var voice = new Voice({ num_beats: totalBeats, beat_value: 4 });
+    if (Voice.Mode) voice.setMode(Voice.Mode.SOFT);
+    voice.addTickables(staveNotes);
+
+    new Formatter().joinVoices([voice]).format([voice], availWidth);
+    voice.draw(ctx, stave);
+  }
+
   /* ---------- VexFlow rendering ---------- */
   var currentNotes = [];
   var currentDurations = [];
@@ -638,65 +691,63 @@
     var fingeringPad  = showFingerings ? 24 : 0;
     var noteNamePad    = showNoteNames ? 20 : 0;
     var extraPadPerSys = fingeringPad + noteNamePad;
-    var totalHeight = STAVE_TOP + noteNamePad;
-    for (var si2 = 0; si2 < numSystems; si2++) {
-      totalHeight += systemHeights[si2] + extraPadPerSys;
-    }
-    totalHeight += 16; // bottom padding
 
-    var renderer = new Renderer(output, Renderer.Backends.SVG);
-    renderer.resize(SYSTEM_WIDTH, totalHeight);
-    var ctx = renderer.getContext();
-
-    var cumulativeY = STAVE_TOP + noteNamePad;
-    systems.forEach(function (systemNotes, si) {
-      var sysDurs = systemDurations[si];
-      var sysH = systemHeights[si];
-      var y = cumulativeY;
-      cumulativeY += sysH + extraPadPerSys;
-      var stave = new Stave(10, y, SYSTEM_WIDTH - 20);
-      stave.addClef("bass");
-      if (haveKeySig) stave.addKeySignature(keySigName);
-      stave.setContext(ctx).draw();
-
-      var staveNotes = systemNotes.map(function (tonalNote, ni) {
-        var key = toVexKey(tonalNote);
-        var dur = sysDurs[ni] || "q";
-        var sn  = new StaveNote({ keys: [key], duration: dur, clef: "bass", autoStem: true });
-        var pc  = Tonal.Note.pitchClass(tonalNote);
-        var acc = accidentalType(pc);
-        if (acc && (!haveKeySig || !alteredPcs.has(pc))) {
-          sn.addModifier(new Accidental(acc), 0);
-        }
-        if (showNoteNames) {
-          var nameAnnotation = new Annotation(tonalNote);
-          nameAnnotation.setVerticalJustification(Annotation.VerticalJustify.TOP);
-          nameAnnotation.setFont({ family: "Inter, system-ui, sans-serif", size: 9, weight: "400" });
-          sn.addModifier(nameAnnotation, 0);
-        }
-        if (showFingerings) {
-          var fingering = getFingering(tonalNote, tubaShift);
-          if (fingering) {
-            var annotation = new Annotation(fingering);
-            annotation.setVerticalJustification(Annotation.VerticalJustify.BOTTOM);
-            annotation.setFont({ family: "Inter, system-ui, sans-serif", size: 11, weight: "600" });
-            sn.addModifier(annotation, 0);
-          }
-        }
-        return sn;
-      });
-
-      var totalBeats = 0;
-      for (var d = 0; d < sysDurs.length; d++) {
-        totalBeats += sysDurs[d] === "h" ? 2 : 1;
+    // --- Render for screen (single SVG, tight spacing) ---
+    {
+      var totalHeight = STAVE_TOP + noteNamePad;
+      for (var si2 = 0; si2 < numSystems; si2++) {
+        totalHeight += systemHeights[si2] + extraPadPerSys;
       }
-      var voice = new Voice({ num_beats: totalBeats, beat_value: 4 });
-      if (Voice.Mode) voice.setMode(Voice.Mode.SOFT);
-      voice.addTickables(staveNotes);
+      totalHeight += 16; // bottom padding
 
-      new Formatter().joinVoices([voice]).format([voice], availWidth);
-      voice.draw(ctx, stave);
-    });
+      var renderer = new Renderer(output, Renderer.Backends.SVG);
+      renderer.resize(SYSTEM_WIDTH, totalHeight);
+      var ctx = renderer.getContext();
+
+      var cumulativeY = STAVE_TOP + noteNamePad;
+      systems.forEach(function (systemNotes, si) {
+        renderSystem(ctx, systemNotes, systemDurations[si], cumulativeY, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, availWidth, SYSTEM_WIDTH);
+        cumulativeY += systemHeights[si] + extraPadPerSys;
+      });
+    }
+
+    // --- Render for print (per-system SVGs, page breaks) ---
+    // ~880 px ≈ one US Letter page at 96 dpi with ¾″ margins.
+    {
+      outputPrint.innerHTML = "";
+      var PAGE_HEIGHT_PX = 880;
+      var currentPageHeight = 0;
+      var pageWrapper = null;
+
+      systems.forEach(function (systemNotes, si) {
+        var sysH = systemHeights[si];
+        var sysTotalH = STAVE_TOP + noteNamePad + sysH + extraPadPerSys + 8;
+
+        // Start a new page if this system would overflow
+        if (currentPageHeight > 0 && currentPageHeight + sysTotalH > PAGE_HEIGHT_PX) {
+          currentPageHeight = 0;
+          pageWrapper = null;
+        }
+
+        if (!pageWrapper) {
+          pageWrapper = document.createElement("div");
+          pageWrapper.className = "print-page";
+          outputPrint.appendChild(pageWrapper);
+        }
+
+        currentPageHeight += sysTotalH;
+
+        var wrapper = document.createElement("div");
+        wrapper.className = "staff-system";
+        pageWrapper.appendChild(wrapper);
+
+        var renderer = new Renderer(wrapper, Renderer.Backends.SVG);
+        renderer.resize(SYSTEM_WIDTH, sysTotalH);
+        var ctx = renderer.getContext();
+
+        renderSystem(ctx, systemNotes, systemDurations[si], STAVE_TOP + noteNamePad, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, availWidth, SYSTEM_WIDTH);
+      });
+    }
   }
 
   /* ---------- Audio playback (Web Audio API) ---------- */
@@ -704,7 +755,6 @@
   var playing  = false;
   var activeNodes = []; // { osc, gain, filter } for stop cleanup
   var playbackTimeouts = [];
-  var finishTimeout = null;
 
   function stopPlayback() {
     // Stop and disconnect all active oscillator chains
@@ -719,13 +769,15 @@
     // Clear all pending timeouts
     playbackTimeouts.forEach(function (id) { clearTimeout(id); });
     playbackTimeouts = [];
-    if (finishTimeout) { clearTimeout(finishTimeout); finishTimeout = null; }
 
-    // Reset UI state
+    // Reset UI state (both play buttons)
     playing = false;
-    playBtn.classList.remove("playing");
-    playIconEl.textContent = "▶";
-    playLabelEl.textContent = "Play";
+    var buttons = [playBtn, playBtnDesktop];
+    var icons = [playIconEl, playIconDesktopEl];
+    var labels = [playLabelEl, playLabelDesktopEl];
+    buttons.forEach(function (b) { if (b) b.classList.remove("playing"); });
+    icons.forEach(function (el) { if (el) el.textContent = "▶"; });
+    labels.forEach(function (el) { if (el) el.textContent = "Play"; });
     var noteSpans = notationHintEl.querySelectorAll(".note-name");
     noteSpans.forEach(function (s) { s.classList.remove("active"); });
   }
@@ -738,26 +790,46 @@
     if (currentNotes.length === 0) return;
 
     playing = true;
-    playBtn.classList.add("playing");
-    playIconEl.textContent = "■";
-    playLabelEl.textContent = "Stop";
+    var buttons = [playBtn, playBtnDesktop];
+    var icons = [playIconEl, playIconDesktopEl];
+    var labels = [playLabelEl, playLabelDesktopEl];
+    buttons.forEach(function (b) { if (b) b.classList.add("playing"); });
+    icons.forEach(function (el) { if (el) el.textContent = "■"; });
+    labels.forEach(function (el) { if (el) el.textContent = "Stop"; });
 
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") audioCtx.resume();
 
-    var now       = audioCtx.currentTime;
-    var rate      = 0.21;
     var noteSpans = notationHintEl.querySelectorAll(".note-name");
+    var currentIdx = 0;
 
-    currentNotes.forEach(function (note, i) {
+    function scheduleNext() {
+      if (!playing || currentIdx >= currentNotes.length) {
+        if (playing) stopPlayback();
+        return;
+      }
+
+      var note = currentNotes[currentIdx];
       var freq = Tonal.Note.freq(note);
-      if (!freq || freq < 16) return;
 
-      var t   = now + i * rate;
-      var dur = rate * 0.92;
+      // Skip notes without a valid frequency
+      if (!freq || freq < 16) {
+        noteSpans.forEach(function (s) { s.classList.remove("active"); });
+        currentIdx++;
+        scheduleNext();
+        return;
+      }
 
-      var osc   = audioCtx.createOscillator();
-      var gain  = audioCtx.createGain();
+      // Read BPM fresh each note so slider changes take effect immediately
+      var rate  = 60 / parseInt(bpmSlider.value, 10);
+      var dur   = rate * 0.92;
+      var noteDuration = currentDurations[currentIdx] === "h" ? 2 * rate : rate;
+
+      var now = audioCtx.currentTime;
+      var t   = now + 0.02;
+
+      var osc    = audioCtx.createOscillator();
+      var gain   = audioCtx.createGain();
       var filter = audioCtx.createBiquadFilter();
 
       activeNodes.push({ osc: osc, gain: gain, filter: filter });
@@ -771,10 +843,6 @@
 
       gain.gain.setValueAtTime(0, t);
       gain.gain.linearRampToValueAtTime(0.22, t + 0.03);
-      // Use setTargetAtTime for a smooth, natural decay that is
-      // consistent across browsers.  Firefox on Android handles
-      // exponentialRampToValueAtTime to tiny values aggressively,
-      // cutting the note body short and producing a thin sound.
       gain.gain.setTargetAtTime(0.001, t + 0.03, dur / 2);
 
       osc.connect(filter);
@@ -784,18 +852,17 @@
       osc.start(t);
       osc.stop(t + dur + 0.05);
 
-      var timeoutId = setTimeout(function () {
-        noteSpans.forEach(function (s, idx) {
-          s.classList.toggle("active", idx === i);
-        });
-      }, i * rate * 1000);
-      playbackTimeouts.push(timeoutId);
-    });
+      // Highlight the current note name
+      noteSpans.forEach(function (s, idx) {
+        s.classList.toggle("active", idx === currentIdx);
+      });
 
-    var totalMs = currentNotes.length * rate * 1000 + 250;
-    finishTimeout = setTimeout(function () {
-      stopPlayback();
-    }, totalMs);
+      currentIdx++;
+      var timeoutId = setTimeout(scheduleNext, noteDuration * 1000);
+      playbackTimeouts.push(timeoutId);
+    }
+
+    scheduleNext();
   }
 
   /* ---------- Wire up & initial render ---------- */
@@ -811,6 +878,7 @@
         tuba: tubaSelect.value,
         pattern: patternSelect.value,
         direction: directionSelect.value,
+        bpm: bpmSlider.value,
         keySig: keySigToggle.checked,
         fingerings: fingeringToggle.checked,
         noteNames: noteNameToggle.checked
@@ -829,6 +897,7 @@
       if (saved.tuba) { tubaSelect.value = saved.tuba; }
       if (saved.pattern) { patternSelect.value = saved.pattern; }
       if (saved.direction) { directionSelect.value = saved.direction; }
+      if (saved.bpm) { bpmSlider.value = saved.bpm; bpmValueEl.textContent = saved.bpm; }
       if (typeof saved.keySig === "boolean") { keySigToggle.checked = saved.keySig; }
       if (typeof saved.fingerings === "boolean") { fingeringToggle.checked = saved.fingerings; }
       if (typeof saved.noteNames === "boolean") { noteNameToggle.checked = saved.noteNames; }
@@ -854,6 +923,53 @@
   patternSelect.addEventListener("change", function () { render(); savePreferences(); });
   directionSelect.addEventListener("change", function () { render(); savePreferences(); });
   playBtn.addEventListener("click", togglePlayback);
+  playBtnDesktop.addEventListener("click", togglePlayback);
+
+  /* ---------- BPM slider ---------- */
+  bpmSlider.addEventListener("input", function () {
+    bpmValueEl.textContent = bpmSlider.value;
+  });
+  bpmSlider.addEventListener("change", function () {
+    savePreferences();
+  });
+
+  /* ---------- Print sheet music ---------- */
+  printBtn.addEventListener("click", function () {
+    if (typeof printJS === "undefined") {
+      window.print();
+      return;
+    }
+
+    var title = scaleNameEl.textContent;
+    if (title === "\u2014") title = "Tuba Scale";
+
+    // Include pattern in title when it's not a plain scale
+    if (patternSelect.value !== "scale") {
+      var patternLabel = patternSelect.options[patternSelect.selectedIndex].text;
+      // Use a short form: strip everything after the first colon or paren
+      var shortPattern = patternLabel.split(/[:\\(]/)[0].trim();
+      title = title + " — " + shortPattern;
+    }
+
+    printJS({
+      printable: "vexflow-output-print",
+      type: "html",
+      documentTitle: title,
+      header: "<h2 style='font-family:serif;text-align:center;margin:0 0 12px;color:#111;'>" + title + "</h2>",
+      style: "\
+        html, body { background: white !important; color: black !important; }\
+        * { background: white !important; color: black !important; }\
+        svg { max-width: 100%; height: auto; }\
+        svg text { fill: #000 !important; }\
+        svg path { stroke: #000 !important; fill: #000 !important; }\
+        svg rect { fill: #fff !important; stroke: #000 !important; }\
+        .print-page { page-break-after: always; }\
+        .print-page:last-child { page-break-after: auto; }\
+        .staff-system { break-inside: avoid; }\
+      ",
+      scanStyles: true,
+    });
+  });
 
   /* ---------- Settings toggle ---------- */
   var settingsToggle = document.getElementById("settingsToggle");

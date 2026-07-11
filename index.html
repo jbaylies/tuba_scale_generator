@@ -49,7 +49,7 @@
         </div>
       </div>
 
-      <button id="playBtn" class="play-btn" type="button" aria-label="Play scale">
+      <button id="playBtn" class="play-btn play-btn-mobile" type="button" aria-label="Play scale">
         <span class="play-icon" aria-hidden="true">▶</span>
         <span class="play-label">Play</span>
       </button>
@@ -124,6 +124,22 @@
             <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
           </label>
         </div>
+
+        <div class="control control-bpm">
+          <label for="bpmSlider">Tempo: <span id="bpmValue">240</span> BPM</label>
+          <div class="bpm-row">
+            <input type="range" id="bpmSlider" min="30" max="999" value="240" step="1" />
+            <button id="playBtnDesktop" class="play-btn play-btn-desktop" type="button" aria-label="Play scale">
+              <span class="play-icon" aria-hidden="true">▶</span>
+              <span class="play-label">Play</span>
+            </button>
+          </div>
+        </div>
+
+        <button id="printBtn" class="print-btn print-btn-settings" type="button" aria-label="Print sheet music">
+          <span class="print-icon" aria-hidden="true">⎙</span>
+          <span class="print-label">Print</span>
+        </button>
       </div>
     </section>
 
@@ -134,18 +150,21 @@
 
     <section class="notation" aria-label="Scale notation">
       <div id="vexflow-output"></div>
+      <div id="vexflow-output-print"></div>
     </section>
 
     <div id="notationHint" class="note-names hidden" aria-live="polite"></div>
 
     <footer class="foot">
-      <span>Powered by <a href="https://github.com/tonaljs/tonal" target="_blank" rel="noopener"><strong>Tonal.js</strong></a> &amp; <a href="https://www.vexflow.com/" target="_blank" rel="noopener"><strong>VexFlow</strong></a>.</span>
+      <span>Powered by <a href="https://github.com/tonaljs/tonal" target="_blank" rel="noopener"><strong>Tonal.js</strong></a> &amp; <a href="https://www.vexflow.com/" target="_blank" rel="noopener"><strong>VexFlow</strong></a>. &middot; <a href="https://github.com/jbaylies/tuba_scale_generator/tree/gh-pages" target="_blank" rel="noopener"><strong>GitHub</strong></a></span>
     </footer>
   </div>
 
   <!-- Libraries via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/tonal@6.4.3/browser/tonal.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/vexflow@5.0.0/build/cjs/vexflow.js"></script>
+  <link rel="stylesheet" href="https://printjs-4de6.kxcdn.com/print.min.css" />
+  <script src="https://printjs-4de6.kxcdn.com/print.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

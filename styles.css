@@ -171,7 +171,7 @@ body {
 
 /* ---------- Settings toggle ---------- */
 .settings-toggle {
-  display: none;
+  display: flex;
   align-items: center;
   gap: 8px;
   font-family: var(--font-ui);
@@ -214,6 +214,15 @@ body {
   gap: 16px;
   align-items: flex-end;
   width: 100%;
+  overflow: hidden;
+  transition: max-height 0.35s ease, opacity 0.25s ease, margin-top 0.3s ease;
+  max-height: 2000px;
+  opacity: 1;
+}
+.advanced-controls.collapsed {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Hide mobile-only octave controls on desktop */
@@ -259,6 +268,88 @@ body {
   font-size: 12px;
 }
 
+/* ---------- Print button ---------- */
+.print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--navy-800);
+  border: 1px solid var(--navy-line);
+  border-radius: 10px;
+  padding: 12px 22px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: transform 0.12s ease, box-shadow 0.18s ease, color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  align-self: flex-end;
+  height: 44px;
+}
+/* Print button inside advanced controls — compact on desktop */
+.print-btn-settings {
+  flex: 0 0 auto;
+  padding: 10px 16px;
+  height: 40px;
+  font-size: 13px;
+}
+.print-btn:hover { color: var(--brass-300); border-color: var(--brass-600); background: var(--navy-700); }
+.print-btn:active { transform: translateY(1px); }
+.print-icon { font-size: 16px; }
+
+/* ---------- BPM slider ---------- */
+.control-bpm {
+  min-width: 300px;
+  flex: 1 1 300px;
+  max-width: 480px;
+}
+.control-bpm label {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+#bpmSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--navy-600);
+  outline: none;
+  border: 1px solid var(--navy-line);
+  cursor: pointer;
+  margin-top: 6px;
+}
+#bpmSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--brass-300), var(--brass-500));
+  border: 2px solid var(--brass-600);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(207,159,62,0.35);
+  transition: transform 0.12s ease, box-shadow 0.15s ease;
+}
+#bpmSlider::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+  box-shadow: 0 3px 12px rgba(207,159,62,0.5);
+}
+#bpmSlider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--brass-300), var(--brass-500));
+  border: 2px solid var(--brass-600);
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(207,159,62,0.35);
+}
+#bpmSlider:focus-visible {
+  box-shadow: 0 0 0 3px rgba(230,182,90,0.22);
+}
+
 /* ---------- Play button ---------- */
 .play-btn {
   display: inline-flex;
@@ -284,6 +375,10 @@ body {
 .play-btn:disabled { opacity: 0.5; cursor: default; filter: grayscale(0.3); box-shadow: none; }
 .play-icon { font-size: 11px; }
 .play-btn.playing .play-icon { font-size: 12px; }
+
+/* Desktop: show in BPM row, hide mobile button */
+.play-btn-desktop { display: inline-flex; }
+.play-btn-mobile { display: none; }
 
 /* ---------- Info bar ---------- */
 .info-bar {
@@ -329,7 +424,21 @@ body {
   display: flex;
   justify-content: center;
 }
-#vexflow-output svg {
+#vexflow-output-print {
+  display: none;
+}
+.print-page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.staff-system {
+  display: flex;
+  justify-content: center;
+}
+#vexflow-output svg,
+.staff-system svg {
   max-width: 100%;
   height: auto;
   display: block;
@@ -425,7 +534,40 @@ body {
   margin: 0 1px;
 }
 
-/* ---------- Footer ---------- */
+/* ---------- Print styles ---------- */
+.print-page {
+  page-break-after: always;
+}
+.print-page:last-child {
+  page-break-after: auto;
+}
+.staff-system {
+  break-inside: avoid;
+}
+
+@media print {
+  body {
+    background: white;
+    color: black;
+  }
+  #vexflow-output {
+    display: none !important;
+  }
+  #vexflow-output-print {
+    display: block !important;
+  }
+  .hero, .controls, .info-bar, .note-names, .foot {
+    display: none !important;
+  }
+  .notation {
+    background: white;
+    border: none;
+    box-shadow: none;
+  }
+  .notation::before {
+    display: none;
+  }
+}
 .foot {
   margin-top: 26px;
   text-align: center;
@@ -441,12 +583,12 @@ body {
   .control { min-width: 130px; flex: 1 1 140px; max-width: 200px; }
   .control-narrow { min-width: 110px; flex: 0 1 120px; max-width: 140px; }
   .control-toggle { min-width: 110px; max-width: 140px; }
-  .play-btn { padding: 12px 18px; }
+  .control-bpm { min-width: 260px; flex: 1 1 260px; max-width: 440px; }
 }
 
 /* Mobile: collapsed advanced panel, 2-col grid, inline toggles */
 @media (max-width: 640px) {
-  .app { padding: 24px 12px 36px; }
+  .app { padding: 12px 10px 24px; }
   .hero { margin-bottom: 22px; }
   .hero h1 { font-size: clamp(28px, 8vw, 44px); }
   .subtitle { display: none; }
@@ -473,24 +615,29 @@ body {
   .select-wrap select { font-size: 15px; padding: 10px 32px 10px 12px; }
   .select-caret { right: 10px; font-size: 10px; }
 
-  /* Play button beside Settings toggle */
+  /* Play button full width */
   .play-btn {
-    flex: 1 1 calc(50% - 5px);
+    flex: 1 1 100%;
     min-width: 0;
     max-width: none;
-    width: auto;
     justify-content: center;
-    order: 98;
   }
 
-  /* Settings toggle beside Play button */
-  .settings-toggle {
-    display: flex;
+  /* Play + Settings: side by side, each 50% */
+  .play-btn-mobile {
+    display: inline-flex;
     flex: 1 1 calc(50% - 5px);
     min-width: 0;
     max-width: none;
     justify-content: center;
-    order: 99;
+  }
+  .play-btn-desktop { display: none; }
+
+  .settings-toggle {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 0;
+    max-width: none;
+    justify-content: center;
   }
 
   /* Hide main octave controls, show mobile duplicates */
@@ -500,22 +647,20 @@ body {
   /* Advanced controls collapsible on mobile */
   .advanced-controls {
     gap: 10px;
-    overflow: hidden;
-    transition: max-height 0.35s ease, opacity 0.25s ease, margin-top 0.3s ease;
-    max-height: 500px;
-    opacity: 1;
   }
   .advanced-controls .control label { font-size: 12px; letter-spacing: 1.1px; }
-  .advanced-controls.collapsed {
-    max-height: 0;
-    opacity: 0;
-    pointer-events: none;
-  }
   .advanced-controls .control,
-  .advanced-controls .control-narrow {
-    flex: 1 1 calc(50% - 5px);
+  .advanced-controls .control-narrow,
+  .advanced-controls .control-bpm {
+    flex: 1 1 100%;
     min-width: 0;
     max-width: none;
+  }
+
+  .advanced-controls .print-btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: 4px;
   }
 
   /* Toggles inline: label beside switch */
@@ -535,9 +680,10 @@ body {
 
   .info-bar { display: none; }
   .info-chip { font-size: 12px; padding: 5px 10px; }
-  .notation { padding: 18px 10px 12px; min-height: 180px; }
-  .note-names { font-size: 13px; padding: 10px 14px; }
-  .foot { font-size: 11px; margin-top: 18px; }
+  .notation { padding: 10px 8px 8px; min-height: 100px; }
+  .note-names { font-size: 13px; padding: 8px 10px; }
+  .foot { font-size: 11px; margin-top: 12px; }
+  .notation { margin-top: 12px; }
 }
 
 /* Mobile landscape: 3-column grid, Play button inline beside Settings */
@@ -565,28 +711,38 @@ body {
   .select-wrap select { font-size: 14px; padding: 8px 28px 8px 10px; }
   .select-caret { right: 8px; font-size: 9px; }
 
-  /* Play button inline beside Settings toggle */
+  /* Play button full width */
   .play-btn {
-    flex: 1 1 calc(33.33% - 6px);
+    flex: 1 1 100%;
     min-width: 0;
     max-width: none;
-    width: auto;
     padding: 8px 12px;
     height: 38px;
     font-size: 13px;
-    order: 98;
+    justify-content: center;
   }
 
-  /* Settings toggle visible on mobile */
+  /* Play + Settings: side by side, each 50% */
+  .play-btn-mobile {
+    display: inline-flex;
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    max-width: none;
+    padding: 8px 12px;
+    height: 38px;
+    font-size: 13px;
+    justify-content: center;
+  }
+  .play-btn-desktop { display: none; }
+
   .settings-toggle {
-    display: flex;
-    flex: 1 1 calc(33.33% - 6px);
+    flex: 1 1 calc(50% - 4px);
     min-width: 0;
     max-width: none;
     padding: 8px 12px;
     height: 38px;
     font-size: 12px;
-    order: 99;
+    justify-content: center;
   }
 
   /* Hide main octave controls, show mobile duplicates */
@@ -596,21 +752,21 @@ body {
   /* Advanced controls: 3-col for dropdowns, toggles in a row */
   .advanced-controls {
     gap: 8px;
-    overflow: hidden;
-    transition: max-height 0.35s ease, opacity 0.25s ease, margin-top 0.3s ease;
-    max-height: 400px;
-    opacity: 1;
-  }
-  .advanced-controls.collapsed {
-    max-height: 0;
-    opacity: 0;
-    pointer-events: none;
   }
   .advanced-controls .control,
-  .advanced-controls .control-narrow {
+  .advanced-controls .control-narrow,
+  .advanced-controls .control-bpm {
     flex: 1 1 calc(33.33% - 6px);
     min-width: 0;
     max-width: none;
+  }
+  .advanced-controls .print-btn {
+    width: 100%;
+    justify-content: center;
+    margin-top: 4px;
+    padding: 8px 12px;
+    height: 38px;
+    font-size: 13px;
   }
 
   /* Toggles: 3 across in a single row */
@@ -630,7 +786,7 @@ body {
 
   .info-bar { display: none; }
   .info-chip { font-size: 11px; padding: 3px 8px; }
-  .notation { padding: 12px 8px 8px; min-height: 130px; }
+  .notation { padding: 8px 6px 6px; min-height: 80px; }
   .note-names { font-size: 12px; padding: 8px 12px; line-height: 2; }
   .foot { font-size: 10px; margin-top: 10px; }
 }
