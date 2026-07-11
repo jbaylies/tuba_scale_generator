@@ -1,6 +1,6 @@
 # tuba_scale_generator
 
-vibed with GLM 5.2 via freebuff.
+This webpage was vibe-coded with 1 hour of GLM 5.2 and 7 hours of DeepSeek V4 Pro via freebuff. The correct tuba fingerings were added manually.
 
 In place of a legal notice, here is a blessing:
 
