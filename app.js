@@ -838,6 +838,11 @@
       durations = notes.map(function () { return "q"; });
     }
 
+    // Last note is a half note for interval and scale patterns in Asc+Desc direction
+    if (durations.length > 0 && direction === "ascendingDescending" && (INTERVAL_OFFSETS[patternType] !== undefined || patternType === "scale")) {
+      durations[durations.length - 1] = "h";
+    }
+
     currentNotes     = notes;
     currentDurations = durations;
 
