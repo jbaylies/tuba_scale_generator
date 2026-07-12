@@ -32,8 +32,8 @@
    */
   var FINGERINGS = {
      // Octave 0 (infrasound)
-     "C1": "1234",  "Db1": "134",  "D1": "34",  "Eb1": "14",  "E1": "123 (24)",  "F1": "13 (4)",
-     "Gb1": "23",  "G1": "12",  "Ab1": "1",  "A1": "2",  "Bb1": "0",  "B1": "51234",
+     "C0": "1234",  "Db0": "134",  "D0": "34",  "Eb0": "14",  "E0": "123 (24)",  "F0": "13 (4)",
+     "Gb0": "23",  "G0": "12",  "Ab0": "1",  "A0": "2",  "Bb0": "0",  "B0": "123 (24)",
      // Octave 1 (pedal range)
      "C1": "1234",  "Db1": "134",  "D1": "34",  "Eb1": "14",  "E1": "123 (24)",  "F1": "13 (4)",
      "Gb1": "23",  "G1": "12",  "Ab1": "1",  "A1": "2",  "Bb1": "0",  "B1": "123 (24)",
@@ -129,10 +129,10 @@
   /* ---------- DOM ---------- */
   const keySelect          = document.getElementById("keySelect");
   const modeSelect         = document.getElementById("modeSelect");
-  const startOctaveSelect  = document.getElementById("startOctaveSelect");
-  const endOctaveSelect    = document.getElementById("endOctaveSelect");
-  const startOctaveSelectMobile = document.getElementById("startOctaveSelectMobile");
-  const endOctaveSelectMobile   = document.getElementById("endOctaveSelectMobile");
+  const lowestNoteSelect        = document.getElementById("lowestNoteSelect");
+  const numOctavesSelect        = document.getElementById("numOctavesSelect");
+  const lowestNoteSelectMobile  = document.getElementById("lowestNoteSelectMobile");
+  const numOctavesSelectMobile  = document.getElementById("numOctavesSelectMobile");
   const keySigToggle       = document.getElementById("keySigToggle");
   const fingeringToggle    = document.getElementById("fingeringToggle");
   const noteNameToggle     = document.getElementById("noteNameToggle");
@@ -264,16 +264,30 @@
   });
   directionSelect.value = "ascending";
 
-  [0, 1, 2, 3, 4, 5].forEach(function (o) {
-    startOctaveSelect.add(new Option("Octave " + o, String(o)));
-    endOctaveSelect.add(new Option("Octave " + o, String(o)));
-    startOctaveSelectMobile.add(new Option("Octave " + o, String(o)));
-    endOctaveSelectMobile.add(new Option("Octave " + o, String(o)));
+  // Populate Lowest Starting Note: chromatic from C0 through B1, plus C2
+  var chromaticNotes = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+  var lowestOptions = [];
+  for (var o = 0; o <= 1; o++) {
+    chromaticNotes.forEach(function (n) { lowestOptions.push(n + o); });
+  }
+  lowestOptions.push("C2");
+
+  lowestOptions.forEach(function (n) {
+    var label = n.replace("b", "\u266D");
+    lowestNoteSelect.add(new Option(label, n));
+    lowestNoteSelectMobile.add(new Option(label, n));
   });
-  startOctaveSelect.value = "1";
-  endOctaveSelect.value   = "2";
-  startOctaveSelectMobile.value = "1";
-  endOctaveSelectMobile.value   = "2";
+  lowestNoteSelect.value = "E1";
+  lowestNoteSelectMobile.value = "E1";
+
+  // Populate Number of Octaves: 1 through 5
+  [1, 2, 3, 4, 5].forEach(function (n) {
+    var label = String(n);
+    numOctavesSelect.add(new Option(label, String(n)));
+    numOctavesSelectMobile.add(new Option(label, String(n)));
+  });
+  numOctavesSelect.value = "1";
+  numOctavesSelectMobile.value = "1";
 
   /**
    * Return the notes for a chord rooted at index i.
@@ -597,8 +611,16 @@
   function render() {
     var tonic       = keySelect.value;
     var modeType    = modeSelect.value;
-    var startOctave = parseInt(startOctaveSelect.value, 10);
-    var endOctave   = parseInt(endOctaveSelect.value, 10);
+    var lowestNote  = lowestNoteSelect.value;
+    var numOctaves  = parseInt(numOctavesSelect.value, 10);
+
+    var lowestMidi    = Tonal.Note.midi(lowestNote);
+    var tonicBaseMidi = Tonal.Note.midi(tonic + "0");
+    if (lowestMidi === null || lowestMidi === undefined) lowestMidi = 24; // fallback to C1
+    if (tonicBaseMidi === null || tonicBaseMidi === undefined) tonicBaseMidi = 12; // fallback to C0
+    var startOctave   = Math.max(0, Math.ceil((lowestMidi - tonicBaseMidi) / 12));
+    var endOctave     = startOctave + numOctaves;
+
     var useKeySig   = keySigToggle.checked;
     var showFingerings = fingeringToggle.checked;
     var showNoteNames  = noteNameToggle.checked;
@@ -683,7 +705,7 @@
       if (MODES[mi].value === modeType) { modeLabel = MODES[mi].label; break; }
     }
     var rangeText = startOctave <= endOctave
-      ? "(oct " + startOctave + "\u2013" + endOctave + ")"
+      ? numOctaves + " octave" + (numOctaves > 1 ? "s" : "")
       : "(invalid range)";
     scaleNameEl.textContent  = notes.length ? keyLabel + " " + modeLabel + " " + rangeText : "\u2014";
     noteCountEl.textContent  = notes.length ? notes.length + " notes" : "\u2014";
@@ -967,8 +989,8 @@
       localStorage.setItem(PREFS_KEY, JSON.stringify({
         key: keySelect.value,
         mode: modeSelect.value,
-        startOctave: startOctaveSelect.value,
-        endOctave: endOctaveSelect.value,
+        lowestNote: lowestNoteSelect.value,
+        numOctaves: numOctavesSelect.value,
         tuba: tubaSelect.value,
         pattern: patternSelect.value,
         direction: directionSelect.value,
@@ -989,8 +1011,8 @@
       if (!saved) return;
       if (saved.key) { keySelect.value = saved.key; }
       if (saved.mode) { modeSelect.value = saved.mode; }
-      if (saved.startOctave) { startOctaveSelect.value = saved.startOctave; startOctaveSelectMobile.value = saved.startOctave; }
-      if (saved.endOctave) { endOctaveSelect.value = saved.endOctave; endOctaveSelectMobile.value = saved.endOctave; }
+      if (saved.lowestNote) { lowestNoteSelect.value = saved.lowestNote; lowestNoteSelectMobile.value = saved.lowestNote; }
+      if (saved.numOctaves) { numOctavesSelect.value = saved.numOctaves; numOctavesSelectMobile.value = saved.numOctaves; }
       if (saved.tuba) { tubaSelect.value = saved.tuba; }
       if (saved.pattern) { patternSelect.value = saved.pattern; }
       if (saved.direction) { directionSelect.value = saved.direction; }
@@ -1006,15 +1028,17 @@
 
   keySelect.addEventListener("change", function () { render(); savePreferences(); });
   modeSelect.addEventListener("change", function () { render(); savePreferences(); });
-  startOctaveSelect.addEventListener("change", function () { startOctaveSelectMobile.value = startOctaveSelect.value; render(); savePreferences(); });
-  endOctaveSelect.addEventListener("change", function () { endOctaveSelectMobile.value = endOctaveSelect.value; render(); savePreferences(); });
-  startOctaveSelectMobile.addEventListener("change", function () {
-    startOctaveSelect.value = startOctaveSelectMobile.value;
-    // render + savePreferences fire via the main select's change listener
+  lowestNoteSelect.addEventListener("change", function () { lowestNoteSelectMobile.value = lowestNoteSelect.value; render(); savePreferences(); });
+  numOctavesSelect.addEventListener("change", function () { numOctavesSelectMobile.value = numOctavesSelect.value; render(); savePreferences(); });
+  lowestNoteSelectMobile.addEventListener("change", function () {
+    lowestNoteSelect.value = lowestNoteSelectMobile.value;
+    render();
+    savePreferences();
   });
-  endOctaveSelectMobile.addEventListener("change", function () {
-    endOctaveSelect.value = endOctaveSelectMobile.value;
-    // render + savePreferences fire via the main select's change listener
+  numOctavesSelectMobile.addEventListener("change", function () {
+    numOctavesSelect.value = numOctavesSelectMobile.value;
+    render();
+    savePreferences();
   });
   keySigToggle.addEventListener("change", function () { render(); savePreferences(); });
   fingeringToggle.addEventListener("change", function () { render(); savePreferences(); });
