@@ -14,14 +14,15 @@
   /* ---------- Configuration ---------- */
   // All 12 pitch classes with both sharp and flat spellings (circle of fifths order)
   const KEYS = [
-    "C", "G", "D", "A", "E", "B", "F#", "C#",
-    "F", "Bb", "Eb", "Ab", "Db", "Gb",
+    "C", "F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb",
+    "C#", "F#", "B", "E", "A", "D", "G"
   ];
   const KEY_LABELS = {
     "C": "C", "G": "G", "D": "D", "A": "A", "E": "E", "B": "B",
     "F#": "F\u266F", "C#": "C\u266F",
     "F": "F", "Bb": "B\u266D", "Eb": "E\u266D",
     "Ab": "A\u266D", "Db": "D\u266D", "Gb": "G\u266D",
+    "Cb": "C\u266D",
   };
 
   /* ---------- Tuba Fingerings ----------
@@ -206,7 +207,53 @@
     };
   }
 
-  var keyShuffleBag     = createShuffleBag(KEYS);
+  // Key shuffle bag: 12 unique pitch classes, randomly picks one option
+  // from each enharmonic pair (C#/Db, F#/Gb, B/Cb) on each reshuffle
+  var KEY_BASE = ["C", "F", "Bb", "Eb", "Ab", "E", "A", "D", "G"];
+  var KEY_PAIRS = [["C#","Db"], ["F#","Gb"], ["B","Cb"]];
+
+  function createKeyShuffleBag() {
+    function buildBag() {
+      var bag = KEY_BASE.slice();
+      KEY_PAIRS.forEach(function (p) { bag.push(Math.random() < 0.5 ? p[0] : p[1]); });
+      return bag;
+    }
+    var bag = buildBag();
+    function shuffle(arr) { for (var i = arr.length-1; i > 0; i--) { var j = Math.floor(Math.random()*(i+1)); var t=arr[i]; arr[i]=arr[j]; arr[j]=t; } }
+    shuffle(bag);
+    var index = 0;
+    return {
+      next: function () {
+        if (index >= bag.length) { bag = buildBag(); shuffle(bag); index = 0; }
+        return bag[index++];
+      },
+      getState: function () { return { bag: bag.slice(), index: index }; },
+      setState: function (state) {
+        if (state && state.bag && state.bag.length === 12) {
+          // Validate: all 9 base keys present, exactly one from each enharmonic pair
+          var valid = true;
+          for (var i = 0; i < KEY_BASE.length; i++) {
+            if (state.bag.indexOf(KEY_BASE[i]) === -1) { valid = false; break; }
+          }
+          for (var i = 0; i < KEY_PAIRS.length; i++) {
+            var a = state.bag.indexOf(KEY_PAIRS[i][0]) !== -1;
+            var b = state.bag.indexOf(KEY_PAIRS[i][1]) !== -1;
+            if ((a && b) || (!a && !b)) { valid = false; break; }
+          }
+          if (valid) {
+            bag = state.bag.slice();
+            index = typeof state.index === "number" && state.index >= 0 && state.index <= 12 ? state.index : 0;
+          } else {
+            bag = buildBag(); shuffle(bag); index = 0;
+          }
+        } else {
+          bag = buildBag(); shuffle(bag); index = 0;
+        }
+      }
+    };
+  }
+
+  var keyShuffleBag     = createKeyShuffleBag();
   var modeShuffleBag    = createShuffleBag(MODES.map(function (m) { return m.value; }));
   var patternShuffleBag = createShuffleBag(PATTERNS.map(function (p) { return p.value; }));
 
