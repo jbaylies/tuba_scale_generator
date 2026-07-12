@@ -526,6 +526,11 @@
     diatonicNinthsAlt:    "diatonicNinths"
   };
 
+  var KEY_FIFTHS = {
+    "C": 0, "G": 1, "D": 2, "A": 3, "E": 4, "B": 5, "F#": 6, "C#": 7,
+    "F": -1, "Bb": -2, "Eb": -3, "Ab": -4, "Db": -5, "Gb": -6, "Cb": -7
+  };
+
   var MODE_DEGREE_DOWN = {
     ionian:          "1P",
     dorian:          "2M",
@@ -603,6 +608,148 @@
     new Formatter().joinVoices([voice]).format([voice], availWidth);
     voice.draw(ctx, stave);
   }
+
+  /* ---------- MusicXML export ---------- */
+  var musicXmlBtn = document.getElementById("musicXmlBtn");
+
+  /**
+   * Build a valid MusicXML 4.1 partwise score string from the current notes.
+   * @param {string[]} notes      - Tonal note names e.g. ["Bb2", "C3", ...]
+   * @param {string[]} durations  - "q" (quarter) or "h" (half)
+   * @param {string}   tonic      - key root e.g. "Bb"
+   * @param {string}   modeType   - mode e.g. "ionian"
+   * @param {string}   title      - score title
+   * @param {boolean}  useKeySig      - whether key signatures are enabled
+   * @param {boolean}  showFingerings - include fingering annotations
+   * @param {boolean}  showNoteNames  - include note-name annotations
+   * @param {number}   tubaShift      - semitone shift for tuba transposition
+   * @returns {string} MusicXML document
+   */
+  function generateMusicXML(notes, durations, tonic, modeType, title, useKeySig, showFingerings, showNoteNames, tubaShift) {
+    var parts = [];
+
+    // XML declaration + doctype
+    parts.push('<?xml version="1.0" encoding="UTF-8" standalone="no"?>');
+    parts.push('<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">');
+    parts.push('<score-partwise version="4.1">');
+
+    // Part list
+    parts.push('<part-list>');
+    parts.push('<score-part id="P1">');
+    parts.push('<part-name>Tuba</part-name>');
+    parts.push('</score-part>');
+    parts.push('</part-list>');
+
+    // Work title
+    if (title) {
+      parts.push('<work><work-title>' + title.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</work-title></work>');
+    }
+
+    // Part
+    parts.push('<part id="P1">');
+
+    // Key signature fifths
+    var fifths = 0;
+    if (useKeySig) {
+      var ks = getKeySignature(tonic, modeType);
+      if (ks && KEY_FIFTHS[ks] !== undefined) fifths = KEY_FIFTHS[ks];
+    }
+
+    // Build notes with parsed pitch components
+    var parsedNotes = [];
+    for (var i = 0; i < notes.length; i++) {
+      var step = Tonal.Note.pitchClass(notes[i]);
+      var octave = Tonal.Note.octave(notes[i]);
+      var alter = 0;
+      if (step.indexOf("#") !== -1) { alter = 1; step = step.replace("#", ""); }
+      else if (step.indexOf("b") !== -1) { alter = -1; step = step.replace("b", ""); }
+      var dur = durations[i] || "q";
+      var durVal = dur === "h" ? 2 : 1;
+      var durType = dur === "h" ? "half" : "quarter";
+      var fingering = showFingerings ? getFingering(notes[i], tubaShift) : "";
+      var noteName  = showNoteNames ? notes[i] : "";
+      parsedNotes.push({ step: step, alter: alter, octave: octave, duration: durVal, type: durType, fingering: fingering, noteName: noteName });
+    }
+
+    // Group into measures (4/4 time, 4 beats per measure)
+    var beatsPerMeasure = 4;
+    var measureIdx = 0;
+    var noteIdx = 0;
+
+    while (noteIdx < parsedNotes.length) {
+      measureIdx++;
+      parts.push('<measure number="' + measureIdx + '">');
+
+      // First measure: attributes
+      if (measureIdx === 1) {
+        parts.push('<attributes>');
+        parts.push('<divisions>1</divisions>');
+        parts.push('<key><fifths>' + fifths + '</fifths></key>');
+        parts.push('<time><beats>4</beats><beat-type>4</beat-type></time>');
+        parts.push('<clef><sign>F</sign><line>4</line></clef>');
+        parts.push('</attributes>');
+      }
+
+      // Fill measure with notes up to 4 beats
+      var beatsUsed = 0;
+      while (noteIdx < parsedNotes.length && beatsUsed < beatsPerMeasure) {
+        var pn = parsedNotes[noteIdx];
+        if (beatsUsed + pn.duration > beatsPerMeasure) break; // don't split notes
+        parts.push('<note>');
+        parts.push('<pitch>');
+        parts.push('<step>' + pn.step + '</step>');
+        if (pn.alter !== 0) parts.push('<alter>' + pn.alter + '</alter>');
+        parts.push('<octave>' + pn.octave + '</octave>');
+        parts.push('</pitch>');
+        parts.push('<duration>' + pn.duration + '</duration>');
+        parts.push('<type>' + pn.type + '</type>');
+        if (pn.fingering) {
+          parts.push('<notations><technical><fingering>' + pn.fingering.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</fingering></technical></notations>');
+        }
+        if (pn.noteName) {
+          parts.push('<lyric><text>' + pn.noteName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</text></lyric>');
+        }
+        parts.push('</note>');
+        beatsUsed += pn.duration;
+        noteIdx++;
+      }
+
+      parts.push('</measure>');
+    }
+
+    parts.push('</part>');
+    parts.push('</score-partwise>');
+
+    return parts.join('\n');
+  }
+
+  function exportMusicXML() {
+    if (currentNotes.length === 0) return;
+
+    var title = scaleNameEl.textContent;
+    if (title === "\u2014") title = "Tuba Scale";
+
+    var tonic         = keySelect.value;
+    var modeType      = modeSelect.value;
+    var useKeySig     = keySigToggle.checked;
+    var showFingerings = fingeringToggle.checked;
+    var showNoteNames  = noteNameToggle.checked;
+    var tubaShift      = parseInt(tubaSelect.value, 10);
+
+    var xml = generateMusicXML(currentNotes, currentDurations, tonic, modeType, title, useKeySig, showFingerings, showNoteNames, tubaShift);
+
+    var blob = new Blob([xml], { type: "application/vnd.recordare.musicxml+xml" });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement("a");
+    a.href     = url;
+    a.download = title.replace(/[^a-zA-Z0-9 \-_\.]/g, "") + ".musicxml";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  musicXmlBtn.addEventListener("click", exportMusicXML);
 
   /* ---------- VexFlow rendering ---------- */
   var currentNotes = [];

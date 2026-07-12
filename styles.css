@@ -338,6 +338,30 @@ body {
 .print-btn:active { transform: translateY(1px); }
 .print-icon { font-size: 16px; }
 
+/* ---------- MusicXML button ---------- */
+.musicxml-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  background: var(--navy-800);
+  border: 1px solid var(--navy-line);
+  border-radius: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: transform 0.12s ease, box-shadow 0.18s ease, color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  align-self: flex-end;
+  height: 40px;
+  flex: 0 0 auto;
+}
+.musicxml-btn:hover { color: var(--brass-300); border-color: var(--brass-600); background: var(--navy-700); }
+.musicxml-btn:active { transform: translateY(1px); }
+.musicxml-icon { font-size: 14px; }
+
 /* ---------- BPM slider ---------- */
 .control-bpm {
   min-width: 300px;
@@ -717,7 +741,8 @@ body {
     max-width: none;
   }
 
-  .advanced-controls .print-btn {
+  .advanced-controls .print-btn,
+  .advanced-controls .musicxml-btn {
     width: 100%;
     justify-content: center;
     margin-top: 4px;
@@ -820,7 +845,8 @@ body {
     min-width: 0;
     max-width: none;
   }
-  .advanced-controls .print-btn {
+  .advanced-controls .print-btn,
+  .advanced-controls .musicxml-btn {
     width: 100%;
     justify-content: center;
     margin-top: 4px;
