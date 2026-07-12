@@ -455,13 +455,18 @@
     var base = scale.notes.slice();
 
     // Flatten the 6th degree (index 5) for Mixolydian ♭6
+    // Preserve the same letter name, just adjust the accidental:
+    //   natural → flat, sharp → natural, flat → double-flat
     if (modeType === "mixolydianFlat6") {
-      var flattened = Tonal.Note.transpose(base[5], "-2m");
-      var pc = Tonal.Note.pitchClass(flattened);
-      if (SHARP_PCS[pc]) {
-        flattened = SHARP_PCS[pc] + Tonal.Note.octave(flattened);
-      }
-      base[5] = flattened;
+      var n = base[5];
+      var pc = Tonal.Note.pitchClass(n);
+      var letter = pc.charAt(0);
+      var acc = pc.slice(1);
+      var oct = Tonal.Note.octave(n);
+      if (acc === "##") { acc = "#"; }
+      else if (acc === "#") { acc = ""; }
+      else { acc += "b"; }
+      base[5] = letter + acc + oct;
     }
 
     var octaves = endOctave - startOctave;
@@ -497,8 +502,6 @@
     "C", "G", "D", "A", "E", "B", "F#", "C#",
     "F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb",
   ]);
-
-  var SHARP_PCS = { "C#": "Db", "D#": "Eb", "E#": "F", "F#": "Gb", "G#": "Ab", "A#": "Bb", "B#": "C" };
 
   var INTERVAL_OFFSETS = {
     diatonicThirds: 2,
@@ -578,6 +581,14 @@
       var acc = accidentalType(pc);
       if (acc && (!haveKeySig || !alteredPcs.has(pc))) {
         sn.addModifier(new Accidental(acc), 0);
+      }
+      // Show natural sign when the key signature has a sharp/flat
+      // version of this natural note (e.g., F♮ in D major where F# is in the key sig)
+      if (haveKeySig && !acc) {
+        var letter = pc.charAt(0);
+        if (alteredPcs.has(letter + "#") || alteredPcs.has(letter + "b")) {
+          sn.addModifier(new Accidental("n"), 0);
+        }
       }
       if (showNoteNames) {
         var nameAnnotation = new Annotation(tonalNote);
