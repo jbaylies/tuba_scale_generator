@@ -139,6 +139,9 @@
   const tubaSelect         = document.getElementById("tubaSelect");
   const patternSelect      = document.getElementById("patternSelect");
   const directionSelect    = document.getElementById("directionSelect");
+  const shuffleKeyBtn      = document.getElementById("shuffleKeyBtn");
+  const shuffleModeBtn     = document.getElementById("shuffleModeBtn");
+  const shufflePatternBtn  = document.getElementById("shufflePatternBtn");
   const playBtn         = document.getElementById("playBtn");
   const playBtnDesktop  = document.getElementById("playBtnDesktop");
   const playIconEl      = playBtn.querySelector(".play-icon");
@@ -153,6 +156,87 @@
   const notationHintEl  = document.getElementById("notationHint");
   const output          = document.getElementById("vexflow-output");
   const outputPrint     = document.getElementById("vexflow-output-print");
+
+  /* ---------- Shuffle bag ---------- */
+  /**
+   * Creates a shuffle bag that cycles through values in random order,
+   * reshuffling once every value has been returned.
+   */
+  function createShuffleBag(values) {
+    var bag = values.slice();
+    var index = 0;
+
+    function fisherYates(arr) {
+      for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+      }
+    }
+
+    fisherYates(bag);
+
+    return {
+      next: function () {
+        if (index >= bag.length) {
+          fisherYates(bag);
+          index = 0;
+        }
+        return bag[index++];
+      },
+      getState: function () {
+        return { bag: bag.slice(), index: index };
+      },
+      setState: function (state) {
+        if (state && state.bag && state.bag.length === values.length) {
+          var valid = true;
+          for (var i = 0; i < values.length; i++) {
+            if (state.bag.indexOf(values[i]) === -1) { valid = false; break; }
+          }
+          if (valid) {
+            bag = state.bag.slice();
+            index = typeof state.index === "number" && state.index >= 0 && state.index <= bag.length ? state.index : 0;
+            return;
+          }
+        }
+        fisherYates(bag);
+        index = 0;
+      }
+    };
+  }
+
+  var keyShuffleBag     = createShuffleBag(KEYS);
+  var modeShuffleBag    = createShuffleBag(MODES.map(function (m) { return m.value; }));
+  var patternShuffleBag = createShuffleBag(PATTERNS.map(function (p) { return p.value; }));
+
+  function randomizeKey() {
+    var nextKey = keyShuffleBag.next();
+    keySelect.value = nextKey;
+    // Animate the dice button
+    shuffleKeyBtn.classList.add("shuffling");
+    setTimeout(function () { shuffleKeyBtn.classList.remove("shuffling"); }, 350);
+    render();
+    savePreferences();
+  }
+
+  function randomizeMode() {
+    var nextMode = modeShuffleBag.next();
+    modeSelect.value = nextMode;
+    shuffleModeBtn.classList.add("shuffling");
+    setTimeout(function () { shuffleModeBtn.classList.remove("shuffling"); }, 350);
+    render();
+    savePreferences();
+  }
+
+  function randomizePattern() {
+    var nextPattern = patternShuffleBag.next();
+    patternSelect.value = nextPattern;
+    shufflePatternBtn.classList.add("shuffling");
+    setTimeout(function () { shufflePatternBtn.classList.remove("shuffling"); }, 350);
+    render();
+    savePreferences();
+  }
 
   /* ---------- Populate dropdowns ---------- */
   KEYS.forEach(function (k) {
@@ -803,9 +887,12 @@
     var currentIdx = 0;
 
     function scheduleNext() {
-      if (!playing || currentIdx >= currentNotes.length) {
-        if (playing) stopPlayback();
+      if (!playing) {
+        stopPlayback();
         return;
+      }
+      if (currentIdx >= currentNotes.length) {
+        currentIdx = 0;
       }
 
       var note = currentNotes[currentIdx];
@@ -888,7 +975,10 @@
         bpm: bpmSlider.value,
         keySig: keySigToggle.checked,
         fingerings: fingeringToggle.checked,
-        noteNames: noteNameToggle.checked
+        noteNames: noteNameToggle.checked,
+        keyShuffleBag: keyShuffleBag.getState(),
+        modeShuffleBag: modeShuffleBag.getState(),
+        patternShuffleBag: patternShuffleBag.getState()
       }));
     } catch (e) {}
   }
@@ -908,6 +998,9 @@
       if (typeof saved.keySig === "boolean") { keySigToggle.checked = saved.keySig; }
       if (typeof saved.fingerings === "boolean") { fingeringToggle.checked = saved.fingerings; }
       if (typeof saved.noteNames === "boolean") { noteNameToggle.checked = saved.noteNames; }
+      if (saved.keyShuffleBag) { keyShuffleBag.setState(saved.keyShuffleBag); }
+      if (saved.modeShuffleBag) { modeShuffleBag.setState(saved.modeShuffleBag); }
+      if (saved.patternShuffleBag) { patternShuffleBag.setState(saved.patternShuffleBag); }
     } catch (e) {}
   }
 
@@ -929,6 +1022,9 @@
   tubaSelect.addEventListener("change", function () { render(); savePreferences(); });
   patternSelect.addEventListener("change", function () { render(); savePreferences(); });
   directionSelect.addEventListener("change", function () { render(); savePreferences(); });
+  shuffleKeyBtn.addEventListener("click", randomizeKey);
+  shuffleModeBtn.addEventListener("click", randomizeMode);
+  shufflePatternBtn.addEventListener("click", randomizePattern);
   playBtn.addEventListener("click", togglePlayback);
   playBtnDesktop.addEventListener("click", togglePlayback);
 

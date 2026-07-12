@@ -161,6 +161,46 @@ body {
   outline: none;
   box-shadow: 0 0 0 3px rgba(230,182,90,0.22);
 }
+
+/* ---------- Label row (label + shuffle button) ---------- */
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- Shuffle button ---------- */
+.shuffle-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.45;
+  transition: opacity 0.18s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  filter: grayscale(0.4);
+}
+.shuffle-btn:hover {
+  opacity: 0.9;
+  filter: grayscale(0);
+}
+.shuffle-btn:active {
+  transform: scale(0.85);
+}
+.shuffle-btn.shuffling {
+  animation: shuffleSpin 0.35s ease;
+  opacity: 0.9;
+  filter: grayscale(0);
+}
+@keyframes shuffleSpin {
+  0%   { transform: rotate(0deg) scale(1); }
+  25%  { transform: rotate(-20deg) scale(1.2); }
+  50%  { transform: rotate(15deg) scale(1.15); }
+  75%  { transform: rotate(-8deg) scale(1.05); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
 .control label {
   font-size: 12px;
   font-weight: 600;

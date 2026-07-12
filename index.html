@@ -18,7 +18,10 @@
 
     <section class="controls" aria-label="Scale controls">
       <div class="control">
-        <label for="keySelect">Key</label>
+        <div class="label-row">
+          <label for="keySelect">Key</label>
+          <button class="shuffle-btn" id="shuffleKeyBtn" type="button" title="Randomize key" aria-label="Randomize key">🎲</button>
+        </div>
         <div class="select-wrap">
           <select id="keySelect"></select>
           <span class="select-caret" aria-hidden="true">▾</span>
@@ -26,7 +29,10 @@
       </div>
 
       <div class="control">
-        <label for="modeSelect">Mode</label>
+        <div class="label-row">
+          <label for="modeSelect">Mode</label>
+          <button class="shuffle-btn" id="shuffleModeBtn" type="button" title="Randomize mode" aria-label="Randomize mode">🎲</button>
+        </div>
         <div class="select-wrap">
           <select id="modeSelect"></select>
           <span class="select-caret" aria-hidden="true">▾</span>
@@ -86,7 +92,10 @@
         </div>
 
         <div class="control">
-          <label for="patternSelect">Pattern</label>
+          <div class="label-row">
+            <label for="patternSelect">Pattern</label>
+            <button class="shuffle-btn" id="shufflePatternBtn" type="button" title="Randomize pattern" aria-label="Randomize pattern">🎲</button>
+          </div>
           <div class="select-wrap">
             <select id="patternSelect"></select>
             <span class="select-caret" aria-hidden="true">▾</span>
