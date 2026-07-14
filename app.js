@@ -56,8 +56,10 @@
    *  Fingerings are stored for BBb tuba. For other tuba keys the same
    *  fingering pattern is shifted by the listed number of semitones.
    *  e.g. a CC tuba playing C2 uses the BBb fingering for Bb2 (−2 st).
+   *  GG tuba is a minor third (3 semitones) below BBb, so its shift is −3.
    */
   var TUBA_KEYS = [
+    { value: "-3", label: "GG",        shift: -3 },
     { value: "0",  label: "BB\u266D", shift: 0 },
     { value: "2",  label: "CC",       shift: 2 },
     { value: "5",  label: "E\u266D",  shift: 5 },
@@ -88,7 +90,7 @@
    * Builds a MIDI-number index on first call so "Cb3" matches "B2",
    * "F#2" matches "Gb2", etc. Only one spelling per MIDI needs an entry.
    * @param {string} tonalNote - Tonal note name e.g. "C3"
-   * @param {number} shift     - semitones to transpose down for tuba key (0 for BBb)
+   * @param {number} shift     - semitones to transpose down for tuba key (0 for BBb, −3 for GG)
    */
   var _fingeringByMidi = null;
   function getFingering(tonalNote, shift) {
