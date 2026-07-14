@@ -3,11 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tuba Scale Generator</title>
+  <title>Tuba Scale Generator — Free Scales, Fingerings &amp; Patterns for Tuba, Euphonium &amp; Sousaphone</title>
+  <meta name="description" content="Interactive tuba scale generator for student and professional brass players. Practice major, minor, blues, pentatonic &amp; bebop scales with fingerings for BB♭, CC, E♭, F, GG tubas &amp; sousaphone. Includes euphonium &amp; trumpet treble-clef transposition, printable sheet music, and audio playback. Master your fundamentals and patterns today." />
+  <meta name="keywords" content="tuba scales, tuba fingerings, sousaphone scales, euphonium scales, trumpet scales, brass practice, scale generator, music fundamentals, practice patterns, student tuba, BBb tuba, CC tuba, Eb tuba, F tuba" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://scale.sousastep.quest/" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Tuba Scale Generator — Free Scales, Fingerings &amp; Practice Patterns" />
+  <meta property="og:description" content="Interactive scale generator for tuba, euphonium &amp; sousaphone players. Fingerings, printable sheet music, audio playback, and 80+ scale types." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://scale.sousastep.quest/" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:image" content="https://scale.sousastep.quest/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:type" content="image/png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Tuba Scale Generator — Free Scales, Fingerings &amp; Practice Patterns" />
+  <meta name="twitter:description" content="Interactive scale generator for tuba, euphonium &amp; sousaphone players. Fingerings, sheet music &amp; audio playback." />
+  <meta name="twitter:image" content="https://scale.sousastep.quest/og-image.png" />
+
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Tuba Scale Generator",
+    "url": "https://scale.sousastep.quest/",
+    "description": "Interactive scale generator for tuba, euphonium and sousaphone players. Practice scales with fingerings, printable sheet music, and audio playback.",
+    "applicationCategory": "Education",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "about": {
+      "@type": "Thing",
+      "name": "Brass Instrument Scales & Fingerings",
+      "description": "Major, minor, blues, pentatonic, bebop and 80+ scale types for BBb, CC, Eb, F, and GG tubas with euphonium and trumpet transposition"
+    },
+    "audience": {
+      "@type": "EducationalAudience",
+      "educationalRole": "Student"
+    },
+    "featureList": [
+      "Scale notation with key signatures",
+      "Tuba fingerings for BBb, CC, Eb, F, GG tubas",
+      "Treble clef transposition for euphonium and trumpet",
+      "80+ scale types including modes, jazz, pentatonic, and world scales",
+      "Practice patterns including intervals, diatonic triads, 7ths, 9ths, and Clarke studies",
+      "Audio playback with adjustable tempo",
+      "Printable sheet music",
+      "MusicXML export"
+    ]
+  }
+  </script>
 </head>
 <body>
   <div class="app">
@@ -183,6 +244,7 @@
     </section>
 
     <section class="notation" aria-label="Scale notation">
+      <h2 class="sr-only">Scale Notation &amp; Fingerings</h2>
       <div id="vexflow-output"></div>
       <div id="vexflow-output-print"></div>
     </section>

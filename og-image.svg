@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0b132b"/>
+      <stop offset="50%" stop-color="#121c38"/>
+      <stop offset="100%" stop-color="#1a2747"/>
+    </linearGradient>
+    <linearGradient id="brassGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e6b65a"/>
+      <stop offset="50%" stop-color="#f0c878"/>
+      <stop offset="100%" stop-color="#cf9f3e"/>
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#f0c878"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="30%" r="60%">
+      <stop offset="0%" stop-color="rgba(207,159,62,0.12)"/>
+      <stop offset="100%" stop-color="rgba(207,159,62,0)"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Decorative music staff -->
+  <g opacity="0.08" stroke="#e6b65a" stroke-width="1">
+    <line x1="80" y1="280" x2="1120" y2="280"/>
+    <line x1="80" y1="292" x2="1120" y2="292"/>
+    <line x1="80" y1="304" x2="1120" y2="304"/>
+    <line x1="80" y1="316" x2="1120" y2="316"/>
+    <line x1="80" y1="328" x2="1120" y2="328"/>
+  </g>
+
+  <!-- Sparse music notes on staff -->
+  <g fill="#e6b65a" opacity="0.10">
+    <ellipse cx="180" cy="304" rx="10" ry="7" transform="rotate(-15,180,304)"/>
+    <ellipse cx="380" cy="292" rx="10" ry="7" transform="rotate(-15,380,292)"/>
+    <ellipse cx="580" cy="280" rx="10" ry="7" transform="rotate(-15,580,280)"/>
+    <ellipse cx="780" cy="316" rx="10" ry="7" transform="rotate(-15,780,316)"/>
+    <ellipse cx="980" cy="304" rx="10" ry="7" transform="rotate(-15,980,304)"/>
+  </g>
+
+  <!-- Brass accent line -->
+  <line x1="100" y1="360" x2="1100" y2="360" stroke="url(#brassGrad)" stroke-width="3" opacity="0.7"/>
+
+  <!-- Subtle tuba silhouette (right) -->
+  <g transform="translate(880, 140) scale(1.8)" opacity="0.05" fill="#f0c878">
+    <path d="M0 120 C-20 120 -60 90 -60 60 C-60 20 -30 -10 0 -20 C15 -25 30 -20 40 -10 L50 0 L55 10 L60 5 L65 12 L58 18 L48 8 L38 22 L42 30 C50 50 50 80 40 100 C30 120 10 130 0 120 Z"/>
+    <ellipse cx="0" cy="110" rx="50" ry="15"/>
+  </g>
+
+  <!-- Title -->
+  <text x="100" y="190" font-family="Georgia, 'Times New Roman', serif" font-size="70" font-weight="700" fill="url(#textGrad)" letter-spacing="2">
+    Tuba Scale Generator
+  </text>
+
+  <!-- Subtitle -->
+  <text x="100" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#9fb0d1" letter-spacing="0.5">
+    Free Scales, Fingerings &amp; Practice Patterns
+  </text>
+
+  <!-- Tagline -->
+  <text x="100" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#6f80a3" letter-spacing="0.5">
+    for Tuba, Sousaphone, Euphonium &amp; Trumpet
+  </text>
+
+  <!-- Feature pills -->
+  <g transform="translate(100, 410)">
+    <!-- Pill 1: 80+ Scales -->
+    <rect x="0" y="0" width="220" height="44" rx="22" fill="none" stroke="#cf9f3e" stroke-width="1.5" opacity="0.5"/>
+    <!-- Musical note icon -->
+    <g transform="translate(18, 14)" fill="#e6b65a" opacity="0.8">
+      <ellipse cx="8" cy="12" rx="5" ry="4" transform="rotate(-20,8,12)"/>
+      <line x1="13" y1="12" x2="13" y2="1" stroke="#e6b65a" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <text x="48" y="29" font-family="system-ui, sans-serif" font-size="16" fill="#e6b65a" font-weight="600">80+ Scale Types</text>
+
+    <!-- Pill 2: Fingerings -->
+    <rect x="240" y="0" width="220" height="44" rx="22" fill="none" stroke="#cf9f3e" stroke-width="1.5" opacity="0.5"/>
+    <!-- Hand/finger icon -->
+    <g transform="translate(260, 16)" fill="none" stroke="#e6b65a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8">
+      <circle cx="5" cy="4" r="3"/>
+      <line x1="5" y1="7" x2="5" y2="14"/>
+      <line x1="5" y1="10" x2="1" y2="12"/>
+      <line x1="5" y1="10" x2="9" y2="12"/>
+    </g>
+    <text x="290" y="29" font-family="system-ui, sans-serif" font-size="16" fill="#e6b65a" font-weight="600">Tuba Fingerings</text>
+
+    <!-- Pill 3: Printable -->
+    <rect x="480" y="0" width="200" height="44" rx="22" fill="none" stroke="#cf9f3e" stroke-width="1.5" opacity="0.5"/>
+    <!-- Printer/page icon -->
+    <g transform="translate(498, 14)" fill="none" stroke="#e6b65a" stroke-width="1.8" opacity="0.8">
+      <rect x="0" y="4" width="14" height="10" rx="1"/>
+      <rect x="3" y="0" width="8" height="4" rx="1"/>
+      <line x1="3" y1="16" x2="11" y2="16"/>
+    </g>
+    <text x="528" y="29" font-family="system-ui, sans-serif" font-size="16" fill="#e6b65a" font-weight="600">Printable Sheets</text>
+
+    <!-- Pill 4: Audio -->
+    <rect x="700" y="0" width="190" height="44" rx="22" fill="none" stroke="#cf9f3e" stroke-width="1.5" opacity="0.5"/>
+    <!-- Speaker/play icon -->
+    <g transform="translate(717, 14)" fill="none" stroke="#e6b65a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8">
+      <polygon points="3,5 8,5 14,0 14,16 8,11 3,11" fill="#e6b65a"/>
+      <path d="M17,5 Q20,8 20,11 Q20,14 17,17"/>
+    </g>
+    <text x="748" y="29" font-family="system-ui, sans-serif" font-size="16" fill="#e6b65a" font-weight="600">Audio Playback</text>
+  </g>
+
+  <!-- Bottom bar -->
+  <rect x="0" y="600" width="1200" height="30" fill="url(#brassGrad)" opacity="0.25"/>
+
+  <!-- URL -->
+  <text x="600" y="565" font-family="system-ui, sans-serif" font-size="18" fill="#6f80a3" text-anchor="middle" letter-spacing="1">
+    scale.sousastep.quest
+  </text>
+</svg>

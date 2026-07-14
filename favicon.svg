@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2747"/>
+      <stop offset="100%" stop-color="#0b132b"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0c878"/>
+      <stop offset="100%" stop-color="#cf9f3e"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="64" height="64" rx="14" ry="14" fill="url(#bg)" stroke="#cf9f3e" stroke-width="2"/>
+  <!-- Bold eighth-note pair -->
+  <g fill="url(#brass)">
+    <!-- Note 1 -->
+    <ellipse cx="22" cy="42" rx="8" ry="6" transform="rotate(-20,22,42)"/>
+    <line x1="30" y1="42" x2="30" y2="14" stroke="#e6b65a" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Note 2 -->
+    <ellipse cx="44" cy="38" rx="8" ry="6" transform="rotate(-20,44,38)"/>
+    <line x1="52" y1="38" x2="52" y2="9" stroke="#e6b65a" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Beam -->
+    <rect x="30" y="11" width="22" height="5" rx="2"/>
+  </g>
+</svg>
