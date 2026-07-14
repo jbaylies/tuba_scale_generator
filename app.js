@@ -64,6 +64,7 @@
     { value: "2",    label: "CC",               shift: 2,  clef: "bass" },
     { value: "5",    label: "E\u266D",          shift: 5,  clef: "bass" },
     { value: "7",    label: "F",                shift: 7,  clef: "bass" },
+    { value: "12",   label: "B\u266D",          shift: 12,  clef: "bass" },   
     { value: "tcBb", label: "B\u266D Treble Clef", shift: 26, clef: "treble", playbackShift: -2 },
     { value: "tcC",  label: "C Treble Clef",      shift: 26, clef: "treble", playbackShift: 0  },
     { value: "tcEb", label: "E\u266D Treble Clef", shift: 26, clef: "treble", playbackShift: 3  },
@@ -1047,6 +1048,9 @@
     // (24 semitones) internally so the notation sits on the treble staff.
     // The LOWEST NOTE menu value itself is not changed.
     if (tubaCfg.clef === "treble") lowestMidi += 24;
+    // When B♭ tuba is selected, shift the lowest note up one octave
+    // (12 semitones) internally to sit higher on the bass staff.
+    if (tubaCfg.value === "12") lowestMidi += 12;
     var startOctave   = Math.max(0, Math.ceil((lowestMidi - tonicBaseMidi) / 12));
     var endOctave     = startOctave + numOctaves;
 
