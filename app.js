@@ -59,20 +59,33 @@
    *  GG tuba is a minor third (3 semitones) below BBb, so its shift is −3.
    */
   var TUBA_KEYS = [
-    { value: "-3", label: "GG",        shift: -3 },
-    { value: "0",  label: "BB\u266D", shift: 0 },
-    { value: "2",  label: "CC",       shift: 2 },
-    { value: "5",  label: "E\u266D",  shift: 5 },
-    { value: "7",  label: "F",        shift: 7 },
+    { value: "-3", label: "GG",         shift: -3,  clef: "bass" },
+    { value: "0",  label: "BB\u266D",  shift: 0,   clef: "bass" },
+    { value: "2",  label: "CC",        shift: 2,   clef: "bass" },
+    { value: "5",  label: "E\u266D",   shift: 5,   clef: "bass" },
+    { value: "7",  label: "F",         shift: 7,   clef: "bass" },
+    { value: "26", label: "Treble Clef", shift: 26, clef: "treble" },
   ];
+
+  /**
+   * Return the TUBA_KEYS entry matching the currently-selected tuba option.
+   * Falls back to the BBb entry (shift 0, bass clef) if no match is found.
+   */
+  function getTubaConfig() {
+    var val = tubaSelect.value;
+    for (var i = 0; i < TUBA_KEYS.length; i++) {
+      if (TUBA_KEYS[i].value === val) return TUBA_KEYS[i];
+    }
+    return TUBA_KEYS[1]; // BBb fallback
+  }
 
   var PATTERNS = [
     { value: "scale",                  label: "Scale" },
-    { value: "diatonicThirds",         label: "Intervals: 3rds (1-3, 2-4, 3-5, …)" },
-    { value: "diatonicFourths",        label: "Intervals: 4ths (1-4, 2-5, 3-6, …)" },
-    { value: "diatonicFifths",         label: "Intervals: 5ths (1-5, 2-6, 3-7, …)" },
-    { value: "diatonicSixths",         label: "Intervals: 6ths (1-6, 2-7, 3-1, …)" },
-    { value: "diatonicSeventhsIntervals", label: "Intervals: 7ths (1-7, 2-1, 3-2, …)" },
+    { value: "diatonicThirds",         label: "Interval 3rds (1-3, 2-4, 3-5, …)" },
+    { value: "diatonicFourths",        label: "Interval 4ths (1-4, 2-5, 3-6, …)" },
+    { value: "diatonicFifths",         label: "Interval 5ths (1-5, 2-6, 3-7, …)" },
+    { value: "diatonicSixths",         label: "Interval 6ths (1-6, 2-7, 3-1, …)" },
+    { value: "diatonicSeventhsIntervals", label: "Interval 7ths (1-7, 2-1, 3-2, …)" },
     { value: "diatonicTriads",         label: "Diatonic Triads (1-3-5, 2-4-6, …)" },
     { value: "diatonicTriadsDesc",     label: "Diatonic Triads desc (5-3-1, 6-4-2, …)" },
     { value: "diatonicTriadsAlt",       label: "Diatonic Triads Alt. (1-3-5, 6-4-2, …)" },
@@ -808,16 +821,16 @@
   }
 
   /* ---------- Shared stave rendering helper ---------- */
-  function renderSystem(ctx, systemNotes, sysDurs, y, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, availWidth, SYSTEM_WIDTH) {
+  function renderSystem(ctx, systemNotes, sysDurs, y, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, clef, availWidth, SYSTEM_WIDTH) {
     var stave = new Stave(10, y, SYSTEM_WIDTH - 20);
-    stave.addClef("bass");
+    stave.addClef(clef);
     if (haveKeySig) stave.addKeySignature(keySigName);
     stave.setContext(ctx).draw();
 
     var staveNotes = systemNotes.map(function (tonalNote, ni) {
       var key = toVexKey(tonalNote);
       var dur = sysDurs[ni] || "q";
-      var sn  = new StaveNote({ keys: [key], duration: dur, clef: "bass", autoStem: true });
+      var sn  = new StaveNote({ keys: [key], duration: dur, clef: clef, autoStem: true });
       var pc  = Tonal.Note.pitchClass(tonalNote);
       var acc = accidentalType(pc);
       if (acc && (!haveKeySig || !alteredPcs.has(pc))) {
@@ -877,7 +890,7 @@
    * @param {number}   tubaShift      - semitone shift for tuba transposition
    * @returns {string} MusicXML document
    */
-  function generateMusicXML(notes, durations, tonic, modeType, title, useKeySig, showFingerings, showNoteNames, tubaShift) {
+  function generateMusicXML(notes, durations, tonic, modeType, title, useKeySig, showFingerings, showNoteNames, tubaShift, clef) {
     var parts = [];
 
     // XML declaration + doctype
@@ -938,7 +951,11 @@
         parts.push('<divisions>1</divisions>');
         parts.push('<key><fifths>' + fifths + '</fifths></key>');
         parts.push('<time><beats>4</beats><beat-type>4</beat-type></time>');
-        parts.push('<clef><sign>F</sign><line>4</line></clef>');
+        if (clef === "treble") {
+          parts.push('<clef><sign>G</sign><line>2</line></clef>');
+        } else {
+          parts.push('<clef><sign>F</sign><line>4</line></clef>');
+        }
         parts.push('</attributes>');
       }
 
@@ -986,9 +1003,11 @@
     var useKeySig     = keySigToggle.checked;
     var showFingerings = fingeringToggle.checked;
     var showNoteNames  = noteNameToggle.checked;
-    var tubaShift      = parseInt(tubaSelect.value, 10);
+    var tubaCfg        = getTubaConfig();
+    var tubaShift      = tubaCfg.shift;
+    var clef           = tubaCfg.clef || "bass";
 
-    var xml = generateMusicXML(currentNotes, currentDurations, tonic, modeType, title, useKeySig, showFingerings, showNoteNames, tubaShift);
+    var xml = generateMusicXML(currentNotes, currentDurations, tonic, modeType, title, useKeySig, showFingerings, showNoteNames, tubaShift, clef);
 
     var blob = new Blob([xml], { type: "application/vnd.recordare.musicxml+xml" });
     var url  = URL.createObjectURL(blob);
@@ -1012,18 +1031,24 @@
     var modeType    = modeSelect.value;
     var lowestNote  = lowestNoteSelect.value;
     var numOctaves  = parseInt(numOctavesSelect.value, 10);
+    var tubaCfg     = getTubaConfig();
 
     var lowestMidi    = Tonal.Note.midi(lowestNote);
     var tonicBaseMidi = Tonal.Note.midi(tonic + "0");
     if (lowestMidi === null || lowestMidi === undefined) lowestMidi = 24; // fallback to C1
     if (tonicBaseMidi === null || tonicBaseMidi === undefined) tonicBaseMidi = 12; // fallback to C0
+    // When Treble Clef is selected, shift the lowest note up two octaves
+    // (24 semitones) internally so the notation sits on the treble staff.
+    // The LOWEST NOTE menu value itself is not changed.
+    if (tubaCfg.clef === "treble") lowestMidi += 24;
     var startOctave   = Math.max(0, Math.ceil((lowestMidi - tonicBaseMidi) / 12));
     var endOctave     = startOctave + numOctaves;
 
     var useKeySig   = keySigToggle.checked;
     var showFingerings = fingeringToggle.checked;
     var showNoteNames  = noteNameToggle.checked;
-    var tubaShift   = parseInt(tubaSelect.value, 10);
+    var tubaShift   = tubaCfg.shift;
+    var clef        = tubaCfg.clef || "bass";
     var patternType = patternSelect.value;
     var direction   = directionSelect.value;
 
@@ -1058,15 +1083,19 @@
       } else if (direction === "descending") {
         notes = generateDescendingPattern(allScaleNotes, patternType, startIdx, endIdx);
       } else if (direction === "ascendingDescending") {
-        // For interval / chord / clarke patterns, stop ascending one root
+        // For interval / chord patterns, stop ascending one root
         // before the tonic so the turn-around pair is naturally the first
         // descending pair (root goes down by the interval instead of up).
-        var isScale = patternType === "scale";
-        var ascEndIdx = isScale ? endIdx : endIdx - 1;
+        // Clarke ascends the full range (including the top-root group)
+        // so the turn-around mirrors a real Clarke study; the duplicate
+        // top tonic at the start of the descending half is trimmed.
+        var isScale  = patternType === "scale";
+        var isClarke = patternType === "clarke";
+        var ascEndIdx = isScale ? endIdx : (isClarke ? endIdx : endIdx - 1);
         var up   = generateAscendingPattern(allScaleNotes, patternType, startIdx, ascEndIdx);
         var down = generateDescendingPattern(allScaleNotes, patternType, startIdx, endIdx);
-        // Scale still needs the top tonic trimmed from descending.
-        var trimCount = isScale ? 1 : 0;
+        // Scale and Clarke both need the top tonic trimmed from descending.
+        var trimCount = isScale ? 1 : (isClarke ? 1 : 0);
         notes = up.concat(down.slice(trimCount));
       }
     }
@@ -1094,8 +1123,8 @@
       durations = notes.map(function () { return "q"; });
     }
 
-    // Last note is a half note for interval and scale patterns in Asc+Desc direction
-    if (durations.length > 0 && direction === "ascendingDescending" && (INTERVAL_OFFSETS[patternType] !== undefined || patternType === "scale")) {
+    // Last note is a half note for interval, scale, and Clarke patterns in Asc+Desc direction
+    if (durations.length > 0 && direction === "ascendingDescending" && (INTERVAL_OFFSETS[patternType] !== undefined || patternType === "scale" || patternType === "clarke")) {
       durations[durations.length - 1] = "h";
     }
 
@@ -1181,8 +1210,8 @@
     var STAFF_HEIGHT  = 40;   // 5-line staff in px
     var MIN_PAD       = 24;   // min padding above/below staff
     var SEMITONE_PX   = 3;    // px per semitone above/below staff
-    var STAFF_TOP_MIDI = 57;  // A3 = top line of bass clef
-    var STAFF_BOT_MIDI = 41;  // F2 = bottom line of bass clef
+    var STAFF_TOP_MIDI = clef === "treble" ? 77 : 57;  // F5 = top line of treble clef, A3 = top line of bass clef
+    var STAFF_BOT_MIDI = clef === "treble" ? 64 : 41;  // E4 = bottom line of treble clef, F2 = bottom line of bass clef
 
     var keySigPad   = haveKeySig ? 70 : 0;
     var availWidth  = SYSTEM_WIDTH - CLEF_PX - keySigPad - PAD_PX;
@@ -1237,7 +1266,7 @@
 
       var cumulativeY = STAVE_TOP + noteNamePad;
       systems.forEach(function (systemNotes, si) {
-        renderSystem(ctx, systemNotes, systemDurations[si], cumulativeY, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, availWidth, SYSTEM_WIDTH);
+        renderSystem(ctx, systemNotes, systemDurations[si], cumulativeY, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, clef, availWidth, SYSTEM_WIDTH);
         cumulativeY += systemHeights[si] + extraPadPerSys;
       });
     }
@@ -1276,7 +1305,7 @@
         renderer.resize(SYSTEM_WIDTH, sysTotalH);
         var ctx = renderer.getContext();
 
-        renderSystem(ctx, systemNotes, systemDurations[si], STAVE_TOP + noteNamePad, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, availWidth, SYSTEM_WIDTH);
+        renderSystem(ctx, systemNotes, systemDurations[si], STAVE_TOP + noteNamePad, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, clef, availWidth, SYSTEM_WIDTH);
       });
     }
   }
@@ -1521,8 +1550,8 @@
     // Include pattern in title when it's not a plain scale
     if (patternSelect.value !== "scale") {
       var patternLabel = patternSelect.options[patternSelect.selectedIndex].text;
-      // Use a short form: strip everything after the first colon or paren
-      var shortPattern = patternLabel.split(/[:\\(]/)[0].trim();
+      // Use a short form: strip everything after the first paren
+      var shortPattern = patternLabel.split(/\(/)[0].trim();
       title = title + " — " + shortPattern;
     }
 
