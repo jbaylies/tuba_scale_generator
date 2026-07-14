@@ -105,6 +105,11 @@ body {
   flex: 0 1 130px;
   max-width: 150px;
 }
+.control-type {
+  min-width: 150px;
+  flex: 0 1 160px;
+  max-width: 190px;
+}
 .control-toggle {
   min-width: 120px;
   flex: 0 0 auto;
@@ -464,6 +469,36 @@ body {
 }
 .info-chip.muted { color: var(--text-faint); background: rgba(159,176,209,0.06); border-color: rgba(159,176,209,0.16); }
 
+/* ---------- Key signature indicator chip ---------- */
+.info-chip-keysig {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+.keysig-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: background 0.25s ease, box-shadow 0.25s ease;
+}
+.keysig-clean .keysig-dot {
+  background: var(--good);
+  box-shadow: 0 0 6px rgba(126,224,160,0.5);
+}
+.keysig-inline .keysig-dot {
+  background: var(--brass-400);
+  box-shadow: 0 0 6px rgba(230,182,90,0.4);
+}
+.keysig-off .keysig-dot {
+  background: var(--text-faint);
+  opacity: 0.5;
+}
+.keysig-label {
+  white-space: nowrap;
+}
+
 /* ---------- Notation ---------- */
 .notation {
   margin-top: 18px;
@@ -722,7 +757,8 @@ body {
     max-width: none;
     gap: 6px;
   }
-  .control-narrow {
+  .control-narrow,
+  .control-type {
     flex: 1 1 calc(50% - 5px);
     min-width: 0;
     max-width: none;
@@ -818,7 +854,8 @@ body {
 
   /* Primary controls in a 3-column grid */
   .control,
-  .control-narrow {
+  .control-narrow,
+  .control-type {
     flex: 1 1 calc(33.33% - 6px);
     min-width: 0;
     max-width: none;

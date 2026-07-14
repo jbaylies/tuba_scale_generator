@@ -116,20 +116,185 @@
     { value: "ascendingDescending", label: "Asc + Desc" },
   ];
 
-  const MODES = [
-    { value: "ionian",          label: "Major (Ionian)" },
-    { value: "dorian",          label: "Dorian" },
-    { value: "phrygian",        label: "Phrygian" },
-    { value: "lydian",          label: "Lydian" },
-    { value: "mixolydian",      label: "Mixolydian" },
-    { value: "mixolydianFlat6", label: "Mixolydian \u266D6" },
-    { value: "aeolian",         label: "Natural Minor (Aeolian)" },
-    { value: "locrian",         label: "Locrian" },
+  /* ---------- Scale catalogue ----------
+   * Every scale is sourced from Tonal.js's built-in scale dictionary:
+   *   https://github.com/tonaljs/tonal/blob/main/packages/scale-type/data.ts
+   *
+   * `value`    — the Tonal.js scale-type name (used with Tonal.Scale.get)
+   * `label`    — human-friendly display name
+   * `tonalName — override for the Tonal.js name if `value` is an alias
+   * `type`     — which TYPE category the scale belongs to (maps to SCALE_TYPES)
+   * `degreeDown` — interval to descend from tonic to parent major key (for key
+   *                signatures); omitted when no clean parent exists.
+   *
+   * The full catalogue is keyed by `value` in _scaleLookup for O(1) access.
+   */
+  var SCALE_CATALOG = [
+    // ===== Modes =====
+    { value: "major",            label: "Major (Ionian)",         type: "modes",    degreeDown: "1P" },
+    { value: "dorian",          label: "Dorian",                 type: "modes",    degreeDown: "2M" },
+    { value: "phrygian",        label: "Phrygian",               type: "modes",    degreeDown: "3M" },
+    { value: "lydian",          label: "Lydian",                 type: "modes",    degreeDown: "4P" },
+    { value: "mixolydian",      label: "Mixolydian",             type: "modes",    degreeDown: "5P" },
+    { value: "minor",            label: "Natural Minor (Aeolian)", type: "modes", degreeDown: "6M" },
+    { value: "locrian",         label: "Locrian",               type: "modes",    degreeDown: "7M" },
+    // ===== Jazz common scales =====
+    { value: "major blues",      label: "Major Blues",      type: "jazz",     degreeDown: "1P" },
+    { value: "minor blues",      label: "Minor Blues",      type: "jazz",     degreeDown: "6M" },
+    { value: "melodic minor",   label: "Melodic Minor",    type: "jazz" },
+    { value: "harmonic minor",  label: "Harmonic Minor",   type: "jazz" },
+    { value: "bebop",           label: "Bebop",            type: "jazz" },
+    { value: "diminished",      label: "Diminished (Whole-Half)", type: "jazz" },
+    // ===== 5-note scales =====
+    { value: "major pentatonic",        label: "Major Pentatonic",          type: "5-note", degreeDown: "1P" },
+    { value: "ionian pentatonic",       label: "Ionian Pentatonic",       type: "5-note", degreeDown: "1P" },
+    { value: "mixolydian pentatonic",   label: "Mixolydian Pentatonic",   type: "5-note", degreeDown: "5P" },
+    { value: "ritusen",                label: "Ritusen",                  type: "5-note", degreeDown: "1P" },
+    { value: "egyptian",               label: "Egyptian",                 type: "5-note", degreeDown: "5P" },
+    { value: "neapolitan major pentatonic", label: "Neapolitan Major Pentatonic", type: "5-note" },
+    { value: "vietnamese 1",           label: "Vietnamese 1",            type: "5-note", degreeDown: "3M" },
+    { value: "pelog",                  label: "Pelog",                    type: "5-note", degreeDown: "3M" },
+    { value: "kumoijoshi",             label: "Kumoijoshi",               type: "5-note", degreeDown: "3M" },
+    { value: "hirajoshi",              label: "Hirajoshi",                type: "5-note", degreeDown: "6M" },
+    { value: "iwato",                  label: "Iwato",                    type: "5-note", degreeDown: "7M" },
+    { value: "in-sen",                 label: "In-Sen",                   type: "5-note", degreeDown: "3M" },
+    { value: "lydian pentatonic",      label: "Lydian Pentatonic",        type: "5-note", degreeDown: "4P" },
+    { value: "malkos raga",            label: "Malkos Raga",              type: "5-note", degreeDown: "6M" },
+    { value: "locrian pentatonic",     label: "Locrian Pentatonic",       type: "5-note", degreeDown: "7M" },
+    { value: "minor pentatonic",       label: "Minor Pentatonic",         type: "5-note", degreeDown: "6M" },
+    { value: "minor six pentatonic",   label: "Minor Six Pentatonic",     type: "5-note", degreeDown: "2M" },
+    { value: "flat three pentatonic",  label: "Flat Three Pentatonic",    type: "5-note", degreeDown: "2M" },
+    { value: "flat six pentatonic",    label: "Flat Six Pentatonic",      type: "5-note" },
+    { value: "scriabin",               label: "Scriabin",                 type: "5-note" },
+    { value: "whole tone pentatonic",  label: "Whole Tone Pentatonic",    type: "5-note" },
+    { value: "lydian #5p pentatonic",  label: "Lydian #5P Pentatonic",    type: "5-note" },
+    { value: "lydian dominant pentatonic", label: "Lydian Dominant Pentatonic", type: "5-note" },
+    { value: "minor #7m pentatonic",   label: "Minor #7m Pentatonic",     type: "5-note" },
+    { value: "super locrian pentatonic", label: "Super Locrian Pentatonic", type: "5-note" },
+    // ===== 6-note scales =====
+    { value: "minor hexatonic",        label: "Minor Hexatonic",          type: "6-note" },
+    { value: "augmented",             label: "Augmented",                type: "6-note" },
+    { value: "piongio",               label: "Piongio",                  type: "6-note", degreeDown: "5P" },
+    { value: "prometheus neapolitan",  label: "Prometheus Neapolitan",    type: "6-note" },
+    { value: "prometheus",             label: "Prometheus",               type: "6-note" },
+    { value: "mystery #1",            label: "Mystery #1",               type: "6-note" },
+    { value: "six tone symmetric",     label: "Six Tone Symmetric",       type: "6-note" },
+    { value: "whole tone",            label: "Whole Tone",               type: "6-note" },
+    { value: "messiaen's mode #5",    label: "Messiaen's Mode #5",       type: "6-note" },
+    // ===== 7-note scales =====
+    { value: "locrian major",         label: "Locrian Major",            type: "7-note" },
+    { value: "double harmonic lydian", label: "Double Harmonic Lydian",  type: "7-note" },
+    { value: "altered",               label: "Altered (Super Locrian)",  type: "7-note" },
+    { value: "locrian #2",            label: "Locrian #2 (Half-Diminished)", type: "7-note", degreeDown: "6M" },
+    { value: "mixolydian b6",         label: "Mixolydian \u266D6",        type: "7-note", degreeDown: "5P" },
+    { value: "lydian dominant",       label: "Lydian Dominant",          type: "7-note", degreeDown: "5P" },
+    { value: "lydian augmented",      label: "Lydian Augmented",         type: "7-note", degreeDown: "4P" },
+    { value: "dorian b2",            label: "Dorian \u266D2",            type: "7-note", degreeDown: "2M" },
+    { value: "ultralocrian",          label: "Ultralocrian",             type: "7-note" },
+    { value: "locrian 6",            label: "Locrian 6",                type: "7-note", degreeDown: "7M" },
+    { value: "augmented heptatonic",  label: "Augmented Heptatonic",     type: "7-note" },
+    { value: "dorian #4",            label: "Dorian #4 (Ukrainian)",    type: "7-note", degreeDown: "2M" },
+    { value: "lydian diminished",     label: "Lydian Diminished",        type: "7-note", degreeDown: "4P" },
+    { value: "leading whole tone",    label: "Leading Whole Tone",       type: "7-note" },
+    { value: "lydian minor",          label: "Lydian Minor",             type: "7-note", degreeDown: "6M" },
+    { value: "phrygian dominant",     label: "Phrygian Dominant (Spanish)", type: "7-note", degreeDown: "3M" },
+    { value: "balinese",              label: "Balinese",                 type: "7-note", degreeDown: "3M" },
+    { value: "neapolitan major",      label: "Neapolitan Major",         type: "7-note" },
+    { value: "harmonic major",        label: "Harmonic Major",           type: "7-note", degreeDown: "1P" },
+    { value: "double harmonic major", label: "Double Harmonic Major (Gypsy)", type: "7-note" },
+    { value: "hungarian minor",       label: "Hungarian Minor",          type: "7-note" },
+    { value: "hungarian major",       label: "Hungarian Major",          type: "7-note" },
+    { value: "oriental",              label: "Oriental",                 type: "7-note" },
+    { value: "flamenco",              label: "Flamenco",                 type: "7-note" },
+    { value: "todi raga",             label: "Todi Raga",                type: "7-note" },
+    { value: "persian",               label: "Persian",                  type: "7-note" },
+    { value: "enigmatic",             label: "Enigmatic",                type: "7-note" },
+    { value: "major augmented",       label: "Major Augmented",          type: "7-note", degreeDown: "1P" },
+    { value: "lydian #9",            label: "Lydian #9",                type: "7-note", degreeDown: "4P" },
+    // ===== 8-note scales =====
+    { value: "messiaen's mode #4",    label: "Messiaen's Mode #4",       type: "8-note" },
+    { value: "purvi raga",            label: "Purvi Raga",               type: "8-note" },
+    { value: "spanish heptatonic",    label: "Spanish Heptatonic",       type: "8-note", degreeDown: "3M" },
+    { value: "bebop minor",           label: "Bebop Minor",              type: "8-note", degreeDown: "5P" },
+    { value: "bebop major",           label: "Bebop Major",              type: "8-note", degreeDown: "1P" },
+    { value: "bebop locrian",         label: "Bebop Locrian",            type: "8-note", degreeDown: "7M" },
+    { value: "minor bebop",           label: "Minor Bebop",              type: "8-note", degreeDown: "6M" },
+    { value: "ichikosucho",           label: "Ichikosucho",              type: "8-note", degreeDown: "1P" },
+    { value: "minor six diminished",  label: "Minor Six Diminished",     type: "8-note" },
+    { value: "half-whole diminished", label: "Half-Whole Diminished",    type: "8-note" },
+    { value: "kafi raga",             label: "Kafi Raga",                type: "8-note" },
+    { value: "messiaen's mode #6",    label: "Messiaen's Mode #6",       type: "8-note" },
+    // ===== 9-note scales =====
+    { value: "composite blues",       label: "Composite Blues",          type: "9-note" },
+    { value: "messiaen's mode #3",    label: "Messiaen's Mode #3",       type: "9-note" },
+    // ===== 10-note scales =====
+    { value: "messiaen's mode #7",    label: "Messiaen's Mode #7",       type: "10-note" },
+    // ===== 12-note scales =====
+    { value: "chromatic",             label: "Chromatic",                type: "12-note" },
   ];
+
+  // O(1) lookup map: value → catalog entry
+  var _scaleLookup = {};
+  SCALE_CATALOG.forEach(function (s) { _scaleLookup[s.value] = s; });
+
+  // TYPE dropdown options — each filters SCALE_CATALOG by `type`
+  var SCALE_TYPES = [
+    { value: "modes",  label: "Modes" },
+    { value: "jazz",   label: "Jazz common scales" },
+    { value: "5-note", label: "5-note scales" },
+    { value: "6-note", label: "6-note scales" },
+    { value: "7-note", label: "7-note scales" },
+    { value: "8-note", label: "8-note scales" },
+    { value: "9-note", label: "9-note scales" },
+    { value: "10-note", label: "10-note scales" },
+    { value: "12-note", label: "12-note scales" },
+  ];
+
+  /**
+   * Return the scales in a given TYPE category, preserving catalogue order.
+   */
+  function getScalesByType(typeValue) {
+    return SCALE_CATALOG.filter(function (s) { return s.type === typeValue; });
+  }
+
+  /**
+   * Return the Tonal.js scale-type name for a given scale value.
+   * Falls back to the value itself when no tonalName override is set.
+   */
+  function getTonalScaleName(modeType) {
+    var entry = _scaleLookup[modeType];
+    return entry ? (entry.tonalName || entry.value) : modeType;
+  }
+
+  /**
+   * Return the display label for a given scale value.
+   */
+  function getScaleLabel(modeType) {
+    var entry = _scaleLookup[modeType];
+    return entry ? entry.label : modeType;
+  }
+
+  /**
+   * Return the number of notes in one octave of the given scale.
+   * Most modes have 7, pentatonics have 5, blues have 6, etc.
+   * Uses Tonal.Scale.get() (already proven in this codebase) rather than
+   * Tonal.ScaleType.get() to avoid any uncertainty about sub-module
+   * exposure in the UMD browser bundle.
+   */
+  function getScaleSize(modeType) {
+    var scaleName = getTonalScaleName(modeType);
+    var s = Tonal.Scale.get("C4 " + scaleName);
+    if (s && !s.empty && s.intervals && s.intervals.length > 0) {
+      return s.intervals.length;
+    }
+    return 7; // sensible fallback
+  }
 
   /* ---------- DOM ---------- */
   const keySelect          = document.getElementById("keySelect");
+  const typeSelect         = document.getElementById("typeSelect");
   const modeSelect         = document.getElementById("modeSelect");
+  const modeLabelEl        = document.getElementById("modeLabel");
   const lowestNoteSelect        = document.getElementById("lowestNoteSelect");
   const numOctavesSelect        = document.getElementById("numOctavesSelect");
   const lowestNoteSelectMobile  = document.getElementById("lowestNoteSelectMobile");
@@ -154,6 +319,8 @@
   const bpmValueEl      = document.getElementById("bpmValue");
   const scaleNameEl     = document.getElementById("scaleName");
   const noteCountEl     = document.getElementById("noteCount");
+  const keySigIndicator = document.getElementById("keySigIndicator");
+  const keySigLabel     = keySigIndicator.querySelector(".keysig-label");
   const notationHintEl  = document.getElementById("notationHint");
   const output          = document.getElementById("vexflow-output");
   const outputPrint     = document.getElementById("vexflow-output-print");
@@ -254,8 +421,18 @@
   }
 
   var keyShuffleBag     = createKeyShuffleBag();
-  var modeShuffleBag    = createShuffleBag(MODES.map(function (m) { return m.value; }));
+  // modeShuffleBag is rebuilt whenever TYPE changes — see rebuildModeShuffleBag()
+  var modeShuffleBag    = createShuffleBag(getScalesByType(typeSelect.value).map(function (s) { return s.value; }));
   var patternShuffleBag = createShuffleBag(PATTERNS.map(function (p) { return p.value; }));
+
+  /**
+   * Rebuild the mode shuffle bag from the scales in the current TYPE category.
+   * Called whenever TYPE changes.
+   */
+  function rebuildModeShuffleBag() {
+    var values = getScalesByType(typeSelect.value).map(function (s) { return s.value; });
+    modeShuffleBag = createShuffleBag(values);
+  }
 
   function randomizeKey() {
     var nextKey = keyShuffleBag.next();
@@ -291,10 +468,47 @@
   });
   keySelect.value = "Bb";
 
-  MODES.forEach(function (m) {
-    modeSelect.add(new Option(m.label, m.value));
+  // Populate TYPE dropdown
+  SCALE_TYPES.forEach(function (t) {
+    typeSelect.add(new Option(t.label, t.value));
   });
-  modeSelect.value = "ionian";
+  typeSelect.value = "modes";
+
+  /**
+   * Rebuild the MODE dropdown from the currently-selected TYPE.
+   * If the previously-selected scale exists in the new category, keep it;
+   * otherwise default to the first scale in the category.
+   * @param {string} prevModeValue - previously selected mode value (optional)
+   */
+  function populateModeSelect(prevModeValue) {
+    var currentType = typeSelect.value;
+    var scales = getScalesByType(currentType);
+    // Clear all existing options / optgroups
+    modeSelect.innerHTML = "";
+    scales.forEach(function (s) {
+      modeSelect.add(new Option(s.label, s.value));
+    });
+    // Preserve selection if the scale is in this category
+    if (prevModeValue && scales.some(function (s) { return s.value === prevModeValue; })) {
+      modeSelect.value = prevModeValue;
+    } else {
+      modeSelect.value = scales.length > 0 ? scales[0].value : "";
+    }
+  }
+
+  /**
+   * Update the MODE label to show the currently-selected TYPE's display name.
+   * e.g. when TYPE is "modes", label shows "Modes"; when "5-note", shows "5-note scales".
+   */
+  function updateModeLabel() {
+    var typeVal = typeSelect.value;
+    var typeEntry = SCALE_TYPES.filter(function (t) { return t.value === typeVal; })[0];
+    modeLabelEl.textContent = typeEntry ? typeEntry.label : "Mode";
+  }
+
+  populateModeSelect("major");
+  updateModeLabel();
+  rebuildModeShuffleBag();
 
   TUBA_KEYS.forEach(function (t) {
     tubaSelect.add(new Option(t.label, t.value));
@@ -493,28 +707,13 @@
     if (startOctave > endOctave) return [];
     var tonicWithOct = tonic + startOctave;
 
-    // Construct custom scales that Tonal.js doesn't ship with
-    var lookupMode = modeType;
-    if (modeType === "mixolydianFlat6") lookupMode = "mixolydian";
-
-    var scale = Tonal.Scale.get(tonicWithOct + " " + lookupMode);
+    // Look up the scale directly from Tonal.js's built-in scale dictionary.
+    // All scale types (including mixolydian b6 and the jazz scales) are
+    // shipped by Tonal.js — no manual note alteration is needed.
+    var scaleName = getTonalScaleName(modeType);
+    var scale = Tonal.Scale.get(tonicWithOct + " " + scaleName);
     if (!scale || scale.empty || !scale.notes || scale.notes.length === 0) return [];
     var base = scale.notes.slice();
-
-    // Flatten the 6th degree (index 5) for Mixolydian ♭6
-    // Preserve the same letter name, just adjust the accidental:
-    //   natural → flat, sharp → natural, flat → double-flat
-    if (modeType === "mixolydianFlat6") {
-      var n = base[5];
-      var pc = Tonal.Note.pitchClass(n);
-      var letter = pc.charAt(0);
-      var acc = pc.slice(1);
-      var oct = Tonal.Note.octave(n);
-      if (acc === "##") { acc = "#"; }
-      else if (acc === "#") { acc = ""; }
-      else { acc += "b"; }
-      base[5] = letter + acc + oct;
-    }
 
     var octaves = endOctave - startOctave;
     var out = [];
@@ -581,21 +780,14 @@
     "F": -1, "Bb": -2, "Eb": -3, "Ab": -4, "Db": -5, "Gb": -6, "Cb": -7
   };
 
-  var MODE_DEGREE_DOWN = {
-    ionian:          "1P",
-    dorian:          "2M",
-    phrygian:        "3M",
-    lydian:          "4P",
-    mixolydian:      "5P",
-    mixolydianFlat6: "5P",
-    aeolian:         "6M",
-    locrian:         "7M",
-  };
-
+  // Key signatures: each scale entry's `degreeDown` field (set in
+  // SCALE_CATALOG) gives the interval to descend from the tonic to the
+  // parent major key. Scales without a clean major-key parent omit it
+  // and getKeySignature returns null (all accidentals shown inline).
   function getKeySignature(tonic, modeType) {
-    var descend = MODE_DEGREE_DOWN[modeType];
-    if (!descend) return null;
-    var parent = Tonal.Note.transpose(tonic, "-" + descend);
+    var entry = _scaleLookup[modeType];
+    if (!entry || !entry.degreeDown) return null;
+    var parent = Tonal.Note.transpose(tonic, "-" + entry.degreeDown);
     if (STANDARD_KEY_SIGS.has(parent)) return parent;
     return null;
   }
@@ -846,16 +1038,20 @@
       allScaleNotes = allScaleNotes.concat(extraOct.slice(1));
     }
 
+    // Number of notes per octave for this scale type (7 for diatonic modes,
+    // 6 for blues, 8 for bebop/diminished).
+    var scaleSize = getScaleSize(modeType);
+
     // Tonic at startOctave lives at this index in allScaleNotes
-    var startIdx = 7 * (startOctave - lowOctave);
+    var startIdx = scaleSize * (startOctave - lowOctave);
     // Tonic at endOctave lives at this index
-    var endIdx   = 7 * (endOctave - lowOctave);
+    var endIdx   = scaleSize * (endOctave - lowOctave);
 
     var notes = [];
     if (startOctave <= endOctave) {
       if (direction === "ascending") {
         // Scale pattern uses endIdx (no "extra root" past range); other patterns need ascEndIdx
-        var ascEndIdx = patternType === "scale" ? endIdx : startIdx + 8 * octaves - 1;
+        var ascEndIdx = patternType === "scale" ? endIdx : startIdx + (scaleSize + 1) * octaves - 1;
         notes = generateAscendingPattern(allScaleNotes, patternType, startIdx, ascEndIdx);
       } else if (direction === "descending") {
         notes = generateDescendingPattern(allScaleNotes, patternType, startIdx, endIdx);
@@ -910,15 +1106,32 @@
 
     /* Info bar */
     var keyLabel  = KEY_LABELS[tonic] || tonic;
-    var modeLabel = "";
-    for (var mi = 0; mi < MODES.length; mi++) {
-      if (MODES[mi].value === modeType) { modeLabel = MODES[mi].label; break; }
-    }
+    var modeLabel = getScaleLabel(modeType);
     var rangeText = startOctave <= endOctave
       ? numOctaves + " octave" + (numOctaves > 1 ? "s" : "")
       : "(invalid range)";
     scaleNameEl.textContent  = notes.length ? keyLabel + " " + modeLabel + " " + rangeText : "\u2014";
     noteCountEl.textContent  = notes.length ? notes.length + " notes" : "\u2014";
+
+    /* Key signature indicator chip */
+    keySigIndicator.classList.remove("keysig-clean", "keysig-inline", "keysig-off");
+    if (!notes.length) {
+      keySigLabel.textContent = "\u2014";
+      keySigIndicator.classList.add("keysig-off");
+      keySigIndicator.title = "";
+    } else if (!useKeySig) {
+      keySigIndicator.classList.add("keysig-off");
+      keySigLabel.textContent = "Key sig off";
+      keySigIndicator.title = "Key signatures are disabled \u2014 enable in Settings";
+    } else if (haveKeySig) {
+      keySigIndicator.classList.add("keysig-clean");
+      keySigLabel.textContent = keySigName + " major";
+      keySigIndicator.title = "Clean key signature: " + keySigName + " major";
+    } else {
+      keySigIndicator.classList.add("keysig-inline");
+      keySigLabel.textContent = "Accidentals inline";
+      keySigIndicator.title = "No clean key signature for this scale \u2014 all accidentals shown inline";
+    }
 
     /* Note-names strip */
     if (notes.length) {
@@ -1198,6 +1411,7 @@
     try {
       localStorage.setItem(PREFS_KEY, JSON.stringify({
         key: keySelect.value,
+        type: typeSelect.value,
         mode: modeSelect.value,
         lowestNote: lowestNoteSelect.value,
         numOctaves: numOctavesSelect.value,
@@ -1220,7 +1434,26 @@
       var saved = JSON.parse(localStorage.getItem(PREFS_KEY));
       if (!saved) return;
       if (saved.key) { keySelect.value = saved.key; }
-      if (saved.mode) { modeSelect.value = saved.mode; }
+      // Migrate old preference keys from the pre-catalogue version:
+      //   mixolydianFlat6 → "mixolydian b6", ionian → "major", aeolian → "minor"
+      if (saved.mode === "mixolydianFlat6") saved.mode = "mixolydian b6";
+      if (saved.mode === "ionian")         saved.mode = "major";
+      if (saved.mode === "aeolian")        saved.mode = "minor";
+      // Migrate old "basic" type: major pentatonic → 5-note, major/minor → modes
+      if (saved.type === "basic") {
+        saved.type = saved.mode === "major pentatonic" ? "5-note" : "modes";
+      }
+      if (saved.type) {
+        typeSelect.value = saved.type;
+      } else if (saved.mode && _scaleLookup[saved.mode]) {
+        // Migrating from pre-catalogue version: infer TYPE from the saved mode
+        typeSelect.value = _scaleLookup[saved.mode].type;
+      }
+      populateModeSelect(saved.mode || null);
+      // Rebuild shuffle bag to match the restored TYPE's scale list
+      rebuildModeShuffleBag();
+      // Update MODE label to reflect the restored TYPE
+      updateModeLabel();
       if (saved.lowestNote) { lowestNoteSelect.value = saved.lowestNote; lowestNoteSelectMobile.value = saved.lowestNote; }
       if (saved.numOctaves) { numOctavesSelect.value = saved.numOctaves; numOctavesSelectMobile.value = saved.numOctaves; }
       if (saved.tuba) { tubaSelect.value = saved.tuba; }
@@ -1237,6 +1470,14 @@
   }
 
   keySelect.addEventListener("change", function () { render(); savePreferences(); });
+  typeSelect.addEventListener("change", function () {
+    var prevMode = modeSelect.value;
+    populateModeSelect(prevMode);
+    rebuildModeShuffleBag();
+    updateModeLabel();
+    render();
+    savePreferences();
+  });
   modeSelect.addEventListener("change", function () { render(); savePreferences(); });
   lowestNoteSelect.addEventListener("change", function () { lowestNoteSelectMobile.value = lowestNoteSelect.value; render(); savePreferences(); });
   numOctavesSelect.addEventListener("change", function () { numOctavesSelectMobile.value = numOctavesSelect.value; render(); savePreferences(); });
