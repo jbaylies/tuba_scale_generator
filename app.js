@@ -156,9 +156,12 @@
     // ===== Jazz common scales =====
     { value: "major blues",      label: "Major Blues",      type: "jazz",     degreeDown: "1P" },
     { value: "minor blues",      label: "Minor Blues",      type: "jazz",     degreeDown: "6M" },
-    { value: "melodic minor",   label: "Melodic Minor",    type: "jazz" },
-    { value: "harmonic minor",  label: "Harmonic Minor",   type: "jazz" },
-    { value: "bebop",           label: "Bebop",            type: "jazz" },
+    { value: "melodic minor",   label: "Melodic Minor",    type: "jazz", degreeDown: "6M" },
+    { value: "harmonic minor",  label: "Harmonic Minor",   type: "jazz", degreeDown: "6M" },
+    // Bebop (dominant) shares Mixolydian's key signature (degreeDown 5P);
+    // the added major-7th passing tone appears as an accidental (sharp or
+    // natural) as needed. Diminished is symmetric (no clean parent).
+    { value: "bebop",           label: "Bebop",            type: "jazz", degreeDown: "5P" },
     { value: "diminished",      label: "Diminished (Whole-Half)", type: "jazz" },
     // ===== 5-note scales =====
     { value: "major pentatonic",        label: "Major Pentatonic",          type: "5-note", degreeDown: "1P" },
