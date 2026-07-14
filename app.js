@@ -59,12 +59,15 @@
    *  GG tuba is a minor third (3 semitones) below BBb, so its shift is −3.
    */
   var TUBA_KEYS = [
-    { value: "-3", label: "GG",         shift: -3,  clef: "bass" },
-    { value: "0",  label: "BB\u266D",  shift: 0,   clef: "bass" },
-    { value: "2",  label: "CC",        shift: 2,   clef: "bass" },
-    { value: "5",  label: "E\u266D",   shift: 5,   clef: "bass" },
-    { value: "7",  label: "F",         shift: 7,   clef: "bass" },
-    { value: "26", label: "Treble Clef", shift: 26, clef: "treble" },
+    { value: "-3",   label: "GG",               shift: -3, clef: "bass" },
+    { value: "0",    label: "BB\u266D",         shift: 0,  clef: "bass" },
+    { value: "2",    label: "CC",               shift: 2,  clef: "bass" },
+    { value: "5",    label: "E\u266D",          shift: 5,  clef: "bass" },
+    { value: "7",    label: "F",                shift: 7,  clef: "bass" },
+    { value: "tcBb", label: "B\u266D Treble Clef", shift: 26, clef: "treble", playbackShift: -2 },
+    { value: "tcC",  label: "C Treble Clef",      shift: 26, clef: "treble", playbackShift: 0  },
+    { value: "tcEb", label: "E\u266D Treble Clef", shift: 26, clef: "treble", playbackShift: 3  },
+    { value: "tcF",  label: "F Treble Clef",      shift: 26, clef: "treble", playbackShift: 5  },
   ];
 
   /**
@@ -1374,8 +1377,12 @@
         currentIdx = 0;
       }
 
+      var playbackShift = (getTubaConfig().playbackShift) || 0;
       var note = currentNotes[currentIdx];
       var freq = Tonal.Note.freq(note);
+      if (freq && playbackShift !== 0) {
+        freq = freq * Math.pow(2, playbackShift / 12);
+      }
 
       // Skip notes without a valid frequency
       if (!freq || freq < 16) {
