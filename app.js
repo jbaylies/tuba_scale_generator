@@ -324,6 +324,7 @@
   const keySigToggle       = document.getElementById("keySigToggle");
   const fingeringToggle    = document.getElementById("fingeringToggle");
   const noteNameToggle     = document.getElementById("noteNameToggle");
+  const degreeToggle       = document.getElementById("degreeToggle");
   const tubaSelect         = document.getElementById("tubaSelect");
   const patternSelect      = document.getElementById("patternSelect");
   const directionSelect    = document.getElementById("directionSelect");
@@ -723,6 +724,35 @@
     return [];
   }
 
+  /**
+   * Compute scale-degree labels (1-based) for an array of tonal notes.
+   * Returns an array of strings parallel to `notes`, e.g. ["1","2","3",…].
+   * Notes whose pitch class isn't found in the scale get "?".
+   * @param {string[]} notes    - Tonal note names
+   * @param {string}   tonic    - key root e.g. "Bb"
+   * @param {string}   modeType - scale type e.g. "major"
+   * @returns {string[]}
+   */
+  function getDegreeLabels(notes, tonic, modeType) {
+    var labels = [];
+    if (!notes || notes.length === 0) return labels;
+    var scaleRef = Tonal.Scale.get(tonic + "4 " + getTonalScaleName(modeType));
+    if (!scaleRef || scaleRef.empty || !scaleRef.notes) return labels;
+    var scalePcs = scaleRef.notes.map(function (n) { return Tonal.Note.pitchClass(n); });
+    var scaleSize = getScaleSize(modeType);
+    for (var i = 0; i < notes.length; i++) {
+      var pc = Tonal.Note.pitchClass(notes[i]);
+      var idx = scalePcs.indexOf(pc);
+      if (idx >= 0) {
+        var deg = (idx % scaleSize) + 1;
+        labels.push(String(deg));
+      } else {
+        labels.push("?");
+      }
+    }
+    return labels;
+  }
+
   /* ---------- Music theory via Tonal.js ---------- */
 
   function getScaleNotes(tonic, modeType, startOctave, endOctave) {
@@ -828,7 +858,7 @@
   }
 
   /* ---------- Shared stave rendering helper ---------- */
-  function renderSystem(ctx, systemNotes, sysDurs, y, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, clef, availWidth, SYSTEM_WIDTH) {
+  function renderSystem(ctx, systemNotes, sysDurs, sysDegrees, y, haveKeySig, keySigName, alteredPcs, showNoteNames, showDegrees, showFingerings, tubaShift, clef, availWidth, SYSTEM_WIDTH) {
     var stave = new Stave(10, y, SYSTEM_WIDTH - 20);
     stave.addClef(clef);
     if (haveKeySig) stave.addKeySignature(keySigName);
@@ -856,6 +886,12 @@
         nameAnnotation.setVerticalJustification(Annotation.VerticalJustify.TOP);
         nameAnnotation.setFont({ family: "Inter, system-ui, sans-serif", size: 9, weight: "400" });
         sn.addModifier(nameAnnotation, 0);
+      }
+      if (showDegrees && sysDegrees.length > ni) {
+        var degAnnotation = new Annotation(sysDegrees[ni]);
+        degAnnotation.setVerticalJustification(Annotation.VerticalJustify.TOP);
+        degAnnotation.setFont({ family: "Inter, system-ui, sans-serif", size: 10, weight: "700" });
+        sn.addModifier(degAnnotation, 0);
       }
       if (showFingerings) {
         var fingering = getFingering(tonalNote, tubaShift);
@@ -897,7 +933,7 @@
    * @param {number}   tubaShift      - semitone shift for tuba transposition
    * @returns {string} MusicXML document
    */
-  function generateMusicXML(notes, durations, tonic, modeType, title, useKeySig, showFingerings, showNoteNames, tubaShift, clef) {
+  function generateMusicXML(notes, durations, tonic, modeType, title, useKeySig, showFingerings, showNoteNames, showDegrees, tubaShift, clef) {
     var parts = [];
 
     // XML declaration + doctype
@@ -927,6 +963,9 @@
       if (ks && KEY_FIFTHS[ks] !== undefined) fifths = KEY_FIFTHS[ks];
     }
 
+    // Compute degree labels for MusicXML when DEGREES toggle is on
+    var degreeLabels = showDegrees ? getDegreeLabels(notes, tonic, modeType) : [];
+
     // Build notes with parsed pitch components
     var parsedNotes = [];
     for (var i = 0; i < notes.length; i++) {
@@ -940,7 +979,8 @@
       var durType = dur === "h" ? "half" : "quarter";
       var fingering = showFingerings ? getFingering(notes[i], tubaShift) : "";
       var noteName  = showNoteNames ? notes[i] : "";
-      parsedNotes.push({ step: step, alter: alter, octave: octave, duration: durVal, type: durType, fingering: fingering, noteName: noteName });
+      var degree    = showDegrees && degreeLabels.length > i ? degreeLabels[i] : "";
+      parsedNotes.push({ step: step, alter: alter, octave: octave, duration: durVal, type: durType, fingering: fingering, noteName: noteName, degree: degree });
     }
 
     // Group into measures (4/4 time, 4 beats per measure)
@@ -983,7 +1023,10 @@
           parts.push('<notations><technical><fingering>' + pn.fingering.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</fingering></technical></notations>');
         }
         if (pn.noteName) {
-          parts.push('<lyric><text>' + pn.noteName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</text></lyric>');
+          parts.push('<lyric number="1"><text>' + pn.noteName.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</text></lyric>');
+        }
+        if (pn.degree) {
+          parts.push('<lyric number="2"><text>' + pn.degree.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</text></lyric>');
         }
         parts.push('</note>');
         beatsUsed += pn.duration;
@@ -1010,11 +1053,12 @@
     var useKeySig     = keySigToggle.checked;
     var showFingerings = fingeringToggle.checked;
     var showNoteNames  = noteNameToggle.checked;
+    var showDegrees    = degreeToggle.checked;
     var tubaCfg        = getTubaConfig();
     var tubaShift      = tubaCfg.shift;
     var clef           = tubaCfg.clef || "bass";
 
-    var xml = generateMusicXML(currentNotes, currentDurations, tonic, modeType, title, useKeySig, showFingerings, showNoteNames, tubaShift, clef);
+    var xml = generateMusicXML(currentNotes, currentDurations, tonic, modeType, title, useKeySig, showFingerings, showNoteNames, showDegrees, tubaShift, clef);
 
     var blob = new Blob([xml], { type: "application/vnd.recordare.musicxml+xml" });
     var url  = URL.createObjectURL(blob);
@@ -1057,6 +1101,7 @@
     var useKeySig   = keySigToggle.checked;
     var showFingerings = fingeringToggle.checked;
     var showNoteNames  = noteNameToggle.checked;
+    var showDegrees    = degreeToggle.checked;
     var tubaShift   = tubaCfg.shift;
     var clef        = tubaCfg.clef || "bass";
     var patternType = patternSelect.value;
@@ -1140,6 +1185,9 @@
 
     currentNotes     = notes;
     currentDurations = durations;
+
+    // Compute scale-degree labels when the DEGREES toggle is on.
+    var degreeLabels = showDegrees ? getDegreeLabels(notes, tonic, modeType) : [];
 
     var keySigName    = useKeySig ? getKeySignature(tonic, modeType) : null;
     var alteredPcs    = keySigName ? alteredPitchClasses(keySigName) : new Set();
@@ -1231,6 +1279,7 @@
     var numSystems = Math.ceil(n / perSystem);
     var systems = [];
     var systemDurations = [];
+    var systemDegrees = [];
     var idx = 0;
     for (var s = 0; s < numSystems; s++) {
       var remaining        = n - idx;
@@ -1238,6 +1287,7 @@
       var count            = Math.ceil(remaining / remainingSystems);
       systems.push(notes.slice(idx, idx + count));
       systemDurations.push(currentDurations.slice(idx, idx + count));
+      if (degreeLabels.length > 0) systemDegrees.push(degreeLabels.slice(idx, idx + count));
       idx += count;
     }
 
@@ -1260,11 +1310,13 @@
 
     var fingeringPad  = showFingerings ? 24 : 0;
     var noteNamePad    = showNoteNames ? 20 : 0;
-    var extraPadPerSys = fingeringPad + noteNamePad;
+    var degreePad      = showDegrees ? 20 : 0;
+    var topAnnotationPad = noteNamePad + degreePad;
+    var extraPadPerSys = fingeringPad + noteNamePad + degreePad;
 
     // --- Render for screen (single SVG, tight spacing) ---
     {
-      var totalHeight = STAVE_TOP + noteNamePad;
+      var totalHeight = STAVE_TOP + topAnnotationPad;
       for (var si2 = 0; si2 < numSystems; si2++) {
         totalHeight += systemHeights[si2] + extraPadPerSys;
       }
@@ -1274,9 +1326,10 @@
       renderer.resize(SYSTEM_WIDTH, totalHeight);
       var ctx = renderer.getContext();
 
-      var cumulativeY = STAVE_TOP + noteNamePad;
+      var cumulativeY = STAVE_TOP + topAnnotationPad;
       systems.forEach(function (systemNotes, si) {
-        renderSystem(ctx, systemNotes, systemDurations[si], cumulativeY, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, clef, availWidth, SYSTEM_WIDTH);
+        var sysDegs = systemDegrees.length > 0 ? systemDegrees[si] : [];
+        renderSystem(ctx, systemNotes, systemDurations[si], sysDegs, cumulativeY, haveKeySig, keySigName, alteredPcs, showNoteNames, showDegrees, showFingerings, tubaShift, clef, availWidth, SYSTEM_WIDTH);
         cumulativeY += systemHeights[si] + extraPadPerSys;
       });
     }
@@ -1291,7 +1344,7 @@
 
       systems.forEach(function (systemNotes, si) {
         var sysH = systemHeights[si];
-        var sysTotalH = STAVE_TOP + noteNamePad + sysH + extraPadPerSys + 8;
+        var sysTotalH = STAVE_TOP + topAnnotationPad + sysH + extraPadPerSys + 8;
 
         // Start a new page if this system would overflow
         if (currentPageHeight > 0 && currentPageHeight + sysTotalH > PAGE_HEIGHT_PX) {
@@ -1315,7 +1368,8 @@
         renderer.resize(SYSTEM_WIDTH, sysTotalH);
         var ctx = renderer.getContext();
 
-        renderSystem(ctx, systemNotes, systemDurations[si], STAVE_TOP + noteNamePad, haveKeySig, keySigName, alteredPcs, showNoteNames, showFingerings, tubaShift, clef, availWidth, SYSTEM_WIDTH);
+        var sysDegs2 = systemDegrees.length > 0 ? systemDegrees[si] : [];
+        renderSystem(ctx, systemNotes, systemDurations[si], sysDegs2, STAVE_TOP + topAnnotationPad, haveKeySig, keySigName, alteredPcs, showNoteNames, showDegrees, showFingerings, tubaShift, clef, availWidth, SYSTEM_WIDTH);
       });
     }
   }
@@ -1467,6 +1521,7 @@
         keySig: keySigToggle.checked,
         fingerings: fingeringToggle.checked,
         noteNames: noteNameToggle.checked,
+        degrees: degreeToggle.checked,
         keyShuffleBag: keyShuffleBag.getState(),
         modeShuffleBag: modeShuffleBag.getState(),
         patternShuffleBag: patternShuffleBag.getState()
@@ -1508,6 +1563,7 @@
       if (typeof saved.keySig === "boolean") { keySigToggle.checked = saved.keySig; }
       if (typeof saved.fingerings === "boolean") { fingeringToggle.checked = saved.fingerings; }
       if (typeof saved.noteNames === "boolean") { noteNameToggle.checked = saved.noteNames; }
+      if (typeof saved.degrees === "boolean") { degreeToggle.checked = saved.degrees; }
       if (saved.keyShuffleBag) { keyShuffleBag.setState(saved.keyShuffleBag); }
       if (saved.modeShuffleBag) { modeShuffleBag.setState(saved.modeShuffleBag); }
       if (saved.patternShuffleBag) { patternShuffleBag.setState(saved.patternShuffleBag); }
@@ -1539,6 +1595,7 @@
   keySigToggle.addEventListener("change", function () { render(); savePreferences(); });
   fingeringToggle.addEventListener("change", function () { render(); savePreferences(); });
   noteNameToggle.addEventListener("change", function () { render(); savePreferences(); });
+  degreeToggle.addEventListener("change", function () { render(); savePreferences(); });
   tubaSelect.addEventListener("change", function () { render(); savePreferences(); });
   patternSelect.addEventListener("change", function () { render(); savePreferences(); });
   directionSelect.addEventListener("change", function () { render(); savePreferences(); });
