@@ -63,7 +63,7 @@
 
   <!-- Tagline -->
   <text x="100" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="20" fill="#6f80a3" letter-spacing="0.5">
-    for Tuba, Sousaphone, Euphonium &amp; Trumpet
+    for Tuba, Sousaphone, Euphonium, Trombone, &amp; Trumpet
   </text>
 
   <!-- Feature pills -->
@@ -113,6 +113,6 @@
 
   <!-- URL -->
   <text x="600" y="565" font-family="system-ui, sans-serif" font-size="18" fill="#6f80a3" text-anchor="middle" letter-spacing="1">
-    scale.sousastep.quest
+    https://scale.sousastep.quest/
   </text>
 </svg>
