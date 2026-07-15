@@ -25,6 +25,48 @@
     "Cb": "C\u266D",
   };
 
+  /* ---------- Instrument options ---------- */
+  var INSTRUMENTS = [
+    { value: "tuba",                  label: "Tuba" },
+    { value: "trombone",              label: "Trombone" },
+    { value: "trombone_f_attachment", label: "Trombone F attachment" },
+  ];
+
+  /* ---------- Trombone standard slide positions ----------
+   *  Keyed by note name with octave (e.g. "Bb2").
+   *  Only one spelling per MIDI needed — enharmonic lookup handles the rest.
+   */
+  var TROMBONE_STANDARD_POSITIONS = {
+    "E1":"7", "F1":"6", "F#1":"5", "G1":"4", "G#1":"3", "A1":"2", "Bb1":"1",
+    "B1":"ft", "C2":"ft", "C#2":"ft", "D2":"ft", "D#2":"ft",
+    "E2":"7", "F2":"6", "F#2":"5", "G2":"4", "G#2":"3", "A2":"2", "Bb2":"1",
+    "B2":"7", "C3":"6", "C#3":"5", "D3":"4", "D#3":"3",
+    "E3":"2 7", "F3":"1 6", "F#3":"5", "G3":"4", "G#3":"3 7", "A3":"2 6", "Bb3":"1 5",
+    "B3":"4 7", "C4":"3 6", "C#4":"2 5", "D4":"1 4 7", "D#4":"3 6",
+    "E4":"2 5 7", "F4":"1 4 6", "F#4":"3 5 7", "G4":"2 4 6", "G#4":"3 5 7",
+    "A4":"2 4 6", "Bb4":"1 3 5", "B4":"2 4 6",
+    "C5":"1 3 5", "C#5":"2 4 5", "D5":"1 3 4", "D#5":"3 2",
+    "E5":"2", "F5":"1", "F#5":"3", "G5":"2", "G#5":"3", "A5":"2", "Bb5":"1"
+  };
+
+  /* ---------- Trombone F attachment slide positions ----------
+   *  Keyed by note name with octave (e.g. "Bb2").
+   *  "T" prefix indicates trigger (F attachment) positions.
+   *  Only one spelling per MIDI needed — enharmonic lookup handles the rest.
+   */
+  var TROMBONE_F_ATTACHMENT_POSITIONS = {
+    "E1":"7 T2.5", "F1":"6 T1", "F#1":"5", "G1":"4", "G#1":"3", "A1":"2", "Bb1":"1",
+    "B1":"ft", "C2":"T7.5", "C#2":"T6", "D2":"T5", "D#2":"T3.5",
+    "E2":"7 T2.5", "F2":"6 T1", "F#2":"5", "G2":"4 T6", "G#2":"3 T5", "A2":"2 T4", "Bb2":"1 T3",
+    "B2":"7 T2.5", "C3":"6 T1", "C#3":"5", "D3":"4", "D#3":"3",
+    "E3":"2 7", "F3":"1 6", "F#3":"5", "G3":"4", "G#3":"3 7", "A3":"2 6", "Bb3":"1 5",
+    "B3":"4 7", "C4":"3 6", "C#4":"2 5", "D4":"1 4 7", "D#4":"3 6",
+    "E4":"2 5 7", "F4":"1 4 6", "F#4":"3 5 7", "G4":"2 4 6", "G#4":"3 5 7",
+    "A4":"2 4 6", "Bb4":"1 3 5", "B4":"2 4 6",
+    "C5":"1 3 5", "C#5":"2 4 5", "D5":"1 3 4", "D#5":"3 2",
+    "E5":"2", "F5":"1", "F#5":"3", "G5":"2", "G#5":"3", "A5":"2", "Bb5":"1"
+  };
+
   /* ---------- Tuba Fingerings ----------
    *  BBb tuba fingerings keyed by note name with octave (e.g. "Bb2").
    *  Valve numbers: 0 = open, 1 = 1st, 2 = 2nd, 3 = 3rd, 4 = 4th.
@@ -74,6 +116,8 @@
   /**
    * Return the TUBA_KEYS entry matching the currently-selected tuba option.
    * Falls back to the BBb entry (shift 0, bass clef) if no match is found.
+   * Applies to all instruments — trombone ignores the shift for fingering
+   * lookups (slide positions are absolute) but still uses clef / playback.
    */
   function getTubaConfig() {
     var val = tubaSelect.value;
@@ -81,6 +125,12 @@
       if (TUBA_KEYS[i].value === val) return TUBA_KEYS[i];
     }
     return TUBA_KEYS[1]; // BBb fallback
+  }
+
+  /** Return the display name of the currently-selected instrument. */
+  function getInstrumentName() {
+    if (instrumentSelect && instrumentSelect.value !== "tuba") return "Trombone";
+    return "Tuba";
   }
 
   var PATTERNS = [
@@ -110,19 +160,48 @@
    * @param {number} shift     - semitones to transpose down for tuba key (0 for BBb, −3 for GG)
    */
   var _fingeringByMidi = null;
-  function getFingering(tonalNote, shift) {
-    if (_fingeringByMidi === null) {
-      _fingeringByMidi = {};
-      for (var key in FINGERINGS) {
-        if (!FINGERINGS[key]) continue;
-        var midi = Tonal.Note.midi(key);
-        if (midi !== null && midi !== undefined) {
-          _fingeringByMidi[midi] = FINGERINGS[key];
-        }
+  var _tromboneStandardByMidi = null;
+  var _tromboneFAttachmentByMidi = null;
+
+  function _buildMidiLookup(sourceObj) {
+    var lookup = {};
+    for (var key in sourceObj) {
+      if (!sourceObj[key]) continue;
+      var midi = Tonal.Note.midi(key);
+      if (midi !== null && midi !== undefined) {
+        lookup[midi] = sourceObj[key];
       }
     }
+    return lookup;
+  }
+
+  function getFingering(tonalNote, shift) {
+    var instrument = instrumentSelect ? instrumentSelect.value : "tuba";
     var midi = Tonal.Note.midi(tonalNote);
     if (midi === null || midi === undefined) return "";
+
+    // Trombone standard: use slide positions
+    if (instrument === "trombone") {
+      if (_tromboneStandardByMidi === null) {
+        _tromboneStandardByMidi = _buildMidiLookup(TROMBONE_STANDARD_POSITIONS);
+      }
+      var lookupMidi = midi - shift + 12;
+      return _tromboneStandardByMidi[lookupMidi] || "";
+    }
+
+    // Trombone F attachment: use F-attachment slide positions
+    if (instrument === "trombone_f_attachment") {
+      if (_tromboneFAttachmentByMidi === null) {
+        _tromboneFAttachmentByMidi = _buildMidiLookup(TROMBONE_F_ATTACHMENT_POSITIONS);
+      }
+      var lookupMidi = midi - shift + 12;
+      return _tromboneFAttachmentByMidi[lookupMidi] || "";
+    }
+
+    // Tuba: use valve fingerings with tuba-key shift
+    if (_fingeringByMidi === null) {
+      _fingeringByMidi = _buildMidiLookup(FINGERINGS);
+    }
     // Shift the MIDI number down by the tuba-key offset to find the
     // equivalent BBb note (e.g. CC tuba C2 → BBb Bb2).
     var lookupMidi = midi - shift;
@@ -325,7 +404,12 @@
   const fingeringToggle    = document.getElementById("fingeringToggle");
   const noteNameToggle     = document.getElementById("noteNameToggle");
   const degreeToggle       = document.getElementById("degreeToggle");
+  const instrumentSelect   = document.getElementById("instrumentSelect");
   const tubaSelect         = document.getElementById("tubaSelect");
+  const tubaSelectLabel    = document.querySelector('label[for="tubaSelect"]');
+  const fingeringToggleLabel = document.querySelector('label[for="fingeringToggle"]');
+  const heroTitleEl        = document.querySelector('.hero h1');
+  const heroSubtitleEl     = document.querySelector('.hero .subtitle');
   const patternSelect      = document.getElementById("patternSelect");
   const directionSelect    = document.getElementById("directionSelect");
   const shuffleKeyBtn      = document.getElementById("shuffleKeyBtn");
@@ -532,6 +616,11 @@
   populateModeSelect("major");
   updateModeLabel();
   rebuildModeShuffleBag();
+
+  INSTRUMENTS.forEach(function (inst) {
+    instrumentSelect.add(new Option(inst.label, inst.value));
+  });
+  instrumentSelect.value = "tuba";
 
   TUBA_KEYS.forEach(function (t) {
     tubaSelect.add(new Option(t.label, t.value));
@@ -944,7 +1033,7 @@
     // Part list
     parts.push('<part-list>');
     parts.push('<score-part id="P1">');
-    parts.push('<part-name>Tuba</part-name>');
+    parts.push('<part-name>' + getInstrumentName() + '</part-name>');
     parts.push('</score-part>');
     parts.push('</part-list>');
 
@@ -1046,7 +1135,7 @@
     if (currentNotes.length === 0) return;
 
     var title = scaleNameEl.textContent;
-    if (title === "\u2014") title = "Tuba Scale";
+    if (title === "\u2014") title = getInstrumentName() + " Scale";
 
     var tonic         = keySelect.value;
     var modeType      = modeSelect.value;
@@ -1514,6 +1603,7 @@
         mode: modeSelect.value,
         lowestNote: lowestNoteSelect.value,
         numOctaves: numOctavesSelect.value,
+        instrument: instrumentSelect.value,
         tuba: tubaSelect.value,
         pattern: patternSelect.value,
         direction: directionSelect.value,
@@ -1556,6 +1646,7 @@
       updateModeLabel();
       if (saved.lowestNote) { lowestNoteSelect.value = saved.lowestNote; lowestNoteSelectMobile.value = saved.lowestNote; }
       if (saved.numOctaves) { numOctavesSelect.value = saved.numOctaves; numOctavesSelectMobile.value = saved.numOctaves; }
+      if (saved.instrument) { instrumentSelect.value = saved.instrument; }
       if (saved.tuba) { tubaSelect.value = saved.tuba; }
       if (saved.pattern) { patternSelect.value = saved.pattern; }
       if (saved.direction) { directionSelect.value = saved.direction; }
@@ -1596,6 +1687,34 @@
   fingeringToggle.addEventListener("change", function () { render(); savePreferences(); });
   noteNameToggle.addEventListener("change", function () { render(); savePreferences(); });
   degreeToggle.addEventListener("change", function () { render(); savePreferences(); });
+  var ogTitleEl = document.querySelector('meta[property="og:title"]');
+  var twitterTitleEl = document.querySelector('meta[name="twitter:title"]');
+
+  function updateInstrumentUI() {
+    if (instrumentSelect.value === "tuba") {
+      tubaSelectLabel.textContent = "Tuba";
+      fingeringToggleLabel.textContent = "Fingerings";
+      heroTitleEl.textContent = "Tuba Scale Generator";
+      heroSubtitleEl.textContent = "Pick a key and mode, choose your range, and see the scale notated for tuba!";
+      document.title = "Tuba Scale Generator \u2014 Free Scales, Fingerings & Patterns for Tuba, Euphonium, Trombone & Sousaphone";
+      if (ogTitleEl) ogTitleEl.content = "Tuba Scale Generator \u2014 Free Scales, Fingerings &amp; Practice Patterns";
+      if (twitterTitleEl) twitterTitleEl.content = "Tuba Scale Generator \u2014 Free Scales, Fingerings &amp; Practice Patterns";
+    } else {
+      if (!localStorage.getItem("tuba-scale-trombone-key-set")) {
+        tubaSelect.value = "12";
+        localStorage.setItem("tuba-scale-trombone-key-set", "1");
+      }
+      tubaSelectLabel.textContent = "Trombone";
+      fingeringToggleLabel.textContent = "Positions";
+      heroTitleEl.textContent = "Trombone Scale Generator";
+      heroSubtitleEl.textContent = "Pick a key and mode, choose your range, and see the scale notated for trombone!";
+      document.title = "Trombone Scale Generator \u2014 Free Scales, Slide Positions & Patterns for Trombone";
+      if (ogTitleEl) ogTitleEl.content = "Trombone Scale Generator \u2014 Free Scales, Slide Positions &amp; Practice Patterns";
+      if (twitterTitleEl) twitterTitleEl.content = "Trombone Scale Generator \u2014 Free Scales, Slide Positions &amp; Practice Patterns";
+    }
+  }
+
+  instrumentSelect.addEventListener("change", function () { updateInstrumentUI(); render(); savePreferences(); });
   tubaSelect.addEventListener("change", function () { render(); savePreferences(); });
   patternSelect.addEventListener("change", function () { render(); savePreferences(); });
   directionSelect.addEventListener("change", function () { render(); savePreferences(); });
@@ -1616,7 +1735,7 @@
   /* ---------- Print sheet music ---------- */
   printBtn.addEventListener("click", function () {
     var title = scaleNameEl.textContent;
-    if (title === "\u2014") title = "Tuba Scale";
+    if (title === "\u2014") title = getInstrumentName() + " Scale";
 
     // Include pattern in title when it's not a plain scale
     if (patternSelect.value !== "scale") {
@@ -1675,6 +1794,7 @@
   notationHintEl.appendChild(noteToggle);
 
   loadPreferences();
+  updateInstrumentUI();
 
   // Wait for music fonts to load before initial render.
   // VexFlow 5 loads Bravura asynchronously via @font-face.
