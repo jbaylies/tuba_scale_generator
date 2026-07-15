@@ -1690,7 +1690,7 @@
   var ogTitleEl = document.querySelector('meta[property="og:title"]');
   var twitterTitleEl = document.querySelector('meta[name="twitter:title"]');
 
-  function updateInstrumentUI() {
+  function updateInstrumentLabels() {
     if (instrumentSelect.value === "tuba") {
       tubaSelectLabel.textContent = "Tuba";
       fingeringToggleLabel.textContent = "Fingerings";
@@ -1714,7 +1714,7 @@
     }
   }
 
-  instrumentSelect.addEventListener("change", function () { updateInstrumentUI(); render(); savePreferences(); });
+  instrumentSelect.addEventListener("change", function () { updateInstrumentLabels(); render(); savePreferences(); });
   tubaSelect.addEventListener("change", function () { render(); savePreferences(); });
   patternSelect.addEventListener("change", function () { render(); savePreferences(); });
   directionSelect.addEventListener("change", function () { render(); savePreferences(); });
@@ -1794,7 +1794,7 @@
   notationHintEl.appendChild(noteToggle);
 
   loadPreferences();
-  updateInstrumentUI();
+  updateInstrumentLabels();
 
   // Wait for music fonts to load before initial render.
   // VexFlow 5 loads Bravura asynchronously via @font-face.
